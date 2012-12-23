@@ -44,11 +44,13 @@ class Lisp
         evaluate(body, @env.merge(Hash[*bindings.flatten]))
       end,
 
-      "fn" => lambda do |arguments, body|
+      "fn" => lambda do |arg_names, body|
         lambda do |*args|
-          if args.size != arguments.size
-            raise ArgumentError, "wrong number of arguments (#{args.size} for #{arguments.size})"
+          if args.size != arg_names.size
+            raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
           end
+
+          evaluate(body, @env.merge(Hash[arg_names.zip(args)]))
         end
       end
     }
@@ -65,8 +67,8 @@ class Lisp
       break if input == " "
 
       begin
-        print "=> "
         out = evaluate(parse(input))
+        print "=> "
         if out.is_a?(Sexp)
           p out
         else
@@ -102,15 +104,17 @@ class Lisp
     if sexp.is_a?(Array)
       case sexp[0]
       when "quote"
-        env["quote"].call(*sexp[1..-1])
+        evaluate("quote").call(*sexp[1..-1])
       when "def"
-        env["def"].call(sexp[1], *sexp[2..-1].map do |o|
+        evaluate("def").call(sexp[1], *sexp[2..-1].map do |o|
           evaluate(o, env)
         end)
       when "let"
-        env["let"].call(sexp[1], *sexp[2..-1])
+        evaluate("let").call(sexp[1], *sexp[2..-1])
+      when "fn"
+        evaluate("fn").call(sexp[1], *sexp[2..-1])
       else
-        env[sexp[0]].call(*sexp[1..-1].map { |o| evaluate(o, env) })
+        evaluate(sexp[0]).call(*sexp[1..-1].map { |o| evaluate(o, env) })
       end
     elsif sexp.is_a?(String)
       env[sexp]
