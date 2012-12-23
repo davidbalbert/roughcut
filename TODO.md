@@ -4,6 +4,7 @@
     expressions = []
     while_more_input
       expressions << parse_expression()
+  ```
 - test reduce
 - define map and filter in terms of reduce
 - define unquote
