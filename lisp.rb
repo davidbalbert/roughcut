@@ -2,8 +2,12 @@ require 'pp'
 
 class Lisp
   class Sexp < Array
+    def to_s
+      "(#{reduce("") { |out, o| out << o.to_s + " " }.strip})"
+    end
+
     def inspect
-      "(#{join(" ")})"
+      to_s
     end
   end
 
@@ -18,7 +22,38 @@ class Lisp
       "first" => lambda { |list| list[0] },
       "rest" => lambda { |list| list[1..-1] },
       "def" => lambda { |name, val| @env[name] = val },
+
+      # uncomment when I'm on 1.9
+      # "cons" => lambda { |val, list=nil| list ? list.unshift(val) : Sexp.new([val]) }
+
+      # ugly hack for ruby 1.8
+      "cons" => lambda do |*args|
+        if args.size == 0
+          raise ArgumentError, "wrong number of arguments (0 for 1)"
+        elsif args.size > 2
+          raise ArgumentError, "wrong number of arguments (#{args.size} for 2)"
+        end
+
+        val = args[0]
+        list = args[1] || nil
+
+        list ? list.unshift(val) : Sexp.new([val])
+      end,
+
+      "let" => lambda do |bindings, body|
+        evaluate(body, @env.merge(Hash[*bindings.flatten]))
+      end,
+
+      "fn" => lambda do |arguments, body|
+        lambda do |*args|
+          if args.size != arguments.size
+            raise ArgumentError, "wrong number of arguments (#{args.size} for #{arguments.size})"
+          end
+        end
+      end
     }
+
+    @env["env"] = @env
   end
 
   def repl
@@ -31,7 +66,12 @@ class Lisp
 
       begin
         print "=> "
-        pp evaluate(parse(input))
+        out = evaluate(parse(input))
+        if out.is_a?(Sexp)
+          p out
+        else
+          pp out
+        end
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
       end
@@ -58,24 +98,22 @@ class Lisp
     end
   end
 
-  def evaluate(sexp)
+  def evaluate(sexp, env=@env)
     if sexp.is_a?(Array)
       case sexp[0]
       when "quote"
-        @env[sexp[0]].call(*sexp[1..-1])
+        env["quote"].call(*sexp[1..-1])
       when "def"
-        @env[sexp[0]].call(sexp[1], *sexp[2..-1].map do |o|
-          evaluate(o)
+        env["def"].call(sexp[1], *sexp[2..-1].map do |o|
+          evaluate(o, env)
         end)
+      when "let"
+        env["let"].call(sexp[1], *sexp[2..-1])
       else
-        @env[sexp[0]].call(*sexp[1..-1].map { |o| evaluate(o) })
+        env[sexp[0]].call(*sexp[1..-1].map { |o| evaluate(o, env) })
       end
     elsif sexp.is_a?(String)
-      if sexp == "env"
-        @env
-      else
-        @env[sexp]
-      end
+      env[sexp]
     else
       sexp
     end
