@@ -11,6 +11,29 @@ class Lisp
     end
   end
 
+  class Function
+    def initialize(body, args, &block)
+      @sexp = Sexp.new(["fn", args, body])
+      @block = lambda &block
+    end
+
+    def to_proc
+      @block
+    end
+
+    def call(*args)
+      @block.call(*args)
+    end
+
+    def to_s
+      @sexp.to_s
+    end
+
+    def inspect
+      to_s
+    end
+  end
+
   def initialize
     @env = {
       "+" => lambda { |*args| args.reduce(:+) },
@@ -45,7 +68,7 @@ class Lisp
       end,
 
       "fn" => lambda do |arg_names, body|
-        lambda do |*args|
+        Function.new(body, arg_names) do |*args|
           if args.size != arg_names.size
             raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
           end
