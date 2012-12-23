@@ -12,3 +12,4 @@
 - define map and filter in terms of reduce
 - define unquote
 - define defmacro?
+- define defn
