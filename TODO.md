@@ -8,6 +8,8 @@
       end
     end
   ```
+- Make nested lets work
+- Make functions closures (will the previous step do this automatically? probably not)
 - test reduce
 - define map and filter in terms of reduce
 - define unquote
