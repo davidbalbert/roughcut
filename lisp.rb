@@ -131,24 +131,39 @@ class Lisp
   end
 
   def lex(input)
-    tokens = input.gsub("(", " ( ").gsub(")", " ) ").split
-    tokens = tokens.map do |t|
-      if md = /^\d+$/.match(t)
-        md[0].to_i
-      elsif md = /^'(.*)'$/.match(t)
-        md[1]
-      elsif md = /^"(.*)"$/.match(t)
-        md[1]
-      elsif t == "nil"
-        nil
-      elsif t == "true"
-        true
-      elsif t == "false"
-        false
+    input = input.gsub("(", " ( ").gsub(")", " ) ").strip
+    tokens = []
+    until input.empty?
+      input = input.lstrip
+
+      if md = /^(\d+)/.match(input)
+        tokens << md[1].to_i
+        input = input[md[1].length..-1]
+      elsif md = /^('(.*)')/.match(input)
+        tokens << md[2]
+        input = input[md[1].length..-1]
+      elsif md = /^("(.*)")/.match(input)
+        tokens << md[2]
+        input = input[md[1].length..-1]
+      elsif md = /^(nil)/.match(input)
+        tokens << nil
+        input = input[md[1].length..-1]
+      elsif md = /^(true)/.match(input)
+        tokens << true
+        input = input[md[1].length..-1]
+      elsif md = /^(false)/.match(input)
+        tokens << false
+        input = input[md[1].length..-1]
+      elsif md = /^(\S*)\s?/.match(input)
+        tokens << md[1].to_sym
+        input = input[md[1].length..-1]
       else
-        t.to_sym
+        raise SyntaxError, "Error at input: #{input}"
       end
+
     end
+
+    tokens
   end
 
   def parse(input)
