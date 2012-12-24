@@ -44,12 +44,13 @@ class Lisp
       :- => lambda { |*args| args.reduce(:-) },
       :* => lambda { |*args| args.reduce(:*) },
       :/ => lambda { |*args| args.reduce(:/) },
+      :"=" => lambda { |a, b| a == b },
       :puts => lambda { |*args| args.each { |a| p a }; nil },
 
       :quote => lambda { |list| list },
-      :eval => lambda { |list| eval(list) },
+      :eval => lambda { |env, list| eval(list, env) },
       :first => lambda { |list| list[0] },
-      :rest => lambda { |list| list[1..-1] },
+      :rest => lambda { |list| list[1..-1] || Sexp.new },
       :def => lambda { |name, val| @env[name] = val },
 
       # uncomment when I'm on 1.9
@@ -69,20 +70,20 @@ class Lisp
         list ? list.unshift(val) : Sexp.new([val])
       end,
 
-      :let => lambda do |bindings, *expressions|
+      :let => lambda do |env, bindings, *expressions|
         expressions.map do |expr|
-          eval(expr, @env.merge(Hash[*bindings.flatten]))
+          eval(expr, env.merge(Hash[*bindings.flatten]))
         end.last
       end,
 
-      :fn => lambda do |arg_names, *expressions|
+      :fn => lambda do |env, arg_names, *expressions|
         Function.new(expressions, arg_names) do |*args|
           if args.size != arg_names.size
             raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
           end
 
           expressions.map do |expr|
-            eval(expr, @env.merge(Hash[arg_names.zip(args)]))
+            eval(expr, env.merge(Hash[arg_names.zip(args)]))
           end.last
         end
       end,
@@ -92,11 +93,11 @@ class Lisp
       end,
 
 
-      :if => lambda do |condition, yes, no|
+      :if => lambda do |env, condition, yes, no|
         if condition
-          eval(yes)
+          eval(yes, env)
         else
-          eval(no)
+          eval(no, env)
         end
       end
     }
@@ -124,6 +125,7 @@ class Lisp
         end
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
+        STDERR.puts(e.backtrace)
       end
     end
   end
@@ -158,24 +160,30 @@ class Lisp
     if sexp.is_a?(Sexp)
       case sexp[0]
       when :quote
-        eval(:quote).call(*sexp[1..-1])
+        eval(:quote, env).call(*sexp[1..-1])
       when :def
-        eval(:def).call(sexp[1], *sexp[2..-1].map do |o|
+        eval(:def, env).call(sexp[1], *sexp[2..-1].map do |o|
           eval(o, env)
         end)
       when :let
-        eval(:let).call(*sexp[1..-1])
+        eval(:let, env).call(env, *sexp[1..-1])
       when :fn
-        eval(:fn).call(*sexp[1..-1])
+        eval(:fn, env).call(env, *sexp[1..-1])
+      when :eval
+        eval(eval(sexp[1]))
       when :if
-        eval(:if).call(eval(sexp[1]), *sexp[2..-1])
+        eval(:if, env).call(env, eval(sexp[1], env), *sexp[2..-1])
       else
-        eval(sexp[0]).call(*sexp[1..-1].map { |o| eval(o, env) })
+        eval(sexp[0], env).call(*sexp[1..-1].map { |o| eval(o, env) })
       end
     elsif sexp.is_a?(Array) # Top level
-      sexp.map { |s| eval(s) }.last
+      sexp.map { |s| eval(s, env) }.last
     elsif sexp.is_a?(Symbol)
-      env[sexp]
+      if env.has_key?(sexp)
+        env[sexp]
+      else
+        raise NameError, "#{sexp} is undefined"
+      end
     else
       sexp
     end
@@ -194,6 +202,8 @@ class Lisp
         expressions << tokens.shift
       end
     end
+
+    expect_done(tokens)
 
     expressions
   end
@@ -227,6 +237,10 @@ class Lisp
 
   def expect_more(tokens)
     raise "Expecting more input but reached end" if tokens.empty?
+  end
+
+  def expect_done(tokens)
+    raise "Expected end of input but got #{tokens.first}" unless tokens.empty?
   end
 end
 
