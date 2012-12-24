@@ -240,7 +240,7 @@ class Lisp
 
   def expect(type, tokens)
     t = tokens.shift
-    raise "Expecting #{type}, got #{t}" unless t == type
+    raise "Expecting #{type}, got a '#{t}'" unless t == type
     t
   end
 
@@ -249,7 +249,7 @@ class Lisp
   end
 
   def expect_done(tokens)
-    raise "Expected end of input but got #{tokens.first}" unless tokens.empty?
+    raise "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
   end
 end
 
