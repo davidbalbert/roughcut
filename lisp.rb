@@ -49,6 +49,7 @@ class Lisp
 
       :eval => lambda { |list| eval(list) },
       :quote => lambda { |list| list },
+      :quasiquote => lambda { |list| process_unquotes(list) },
       :first => lambda { |list| list[0] },
       :rest => lambda { |list| list[1..-1] || Sexp.new },
       :def => lambda { |env, name, val| @env[name] = eval(val, env) },
@@ -172,6 +173,8 @@ class Lisp
       case sexp[0]
       when :quote
         eval(:quote, env).call(*sexp[1..-1])
+      when :quasiquote
+        eval(:quasiquote, env).call(*sexp[1..-1])
       when :def
         eval(:def, env).call(env, *sexp[1..-1])
       when :let
@@ -250,6 +253,18 @@ class Lisp
 
   def expect_done(tokens)
     raise "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
+  end
+
+  def process_unquotes(sexp)
+    if sexp.is_a?(Sexp)
+      if sexp.first == :unquote
+        eval(*sexp[1..-1])
+      else
+        Sexp.new(sexp.map { |el| process_unquotes(el) })
+      end
+    else
+      sexp
+    end
   end
 end
 
