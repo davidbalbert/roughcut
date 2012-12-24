@@ -5,5 +5,7 @@ sexp: ( vals )
 vals: {val} *
 
 val: ' val
+   | ` val
+   | ~ val
    | STRING | NUM | NIL | TRUE | FALSE | ID | sexp
 

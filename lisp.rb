@@ -144,6 +144,12 @@ class Lisp
       elsif md = /^(')/.match(input)
         tokens << md[1].to_sym
         input = input[md[1].length..-1]
+      elsif md = /^(`)/.match(input)
+        tokens << md[1].to_sym
+        input = input[md[1].length..-1]
+      elsif md = /^(~)/.match(input)
+        tokens << md[1].to_sym
+        input = input[md[1].length..-1]
       elsif md = /^("(.*)")/.match(input)
         tokens << md[2]
         input = input[md[1].length..-1]
@@ -224,6 +230,12 @@ class Lisp
     if tokens.first == :"'"
       tokens.shift
       Sexp.new([:quote, parse_val(tokens)])
+    elsif tokens.first == :`
+      tokens.shift
+      Sexp.new([:quasiquote, parse_val(tokens)])
+    elsif tokens.first == :~
+      tokens.shift
+      Sexp.new([:unquote, parse_val(tokens)])
     elsif tokens.first == :"("
       parse_sexp(tokens)
     else
