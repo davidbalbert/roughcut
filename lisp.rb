@@ -16,8 +16,8 @@ class Lisp
   end
 
   class Function
-    def initialize(body, args, &block)
-      @sexp = Sexp.new(["fn", args, body])
+    def initialize(expressions, args, &block)
+      @sexp = Sexp.new([:fn, args, *expressions])
       @block = lambda &block
     end
 
@@ -69,17 +69,21 @@ class Lisp
         list ? list.unshift(val) : Sexp.new([val])
       end,
 
-      :let => lambda do |bindings, body|
-        eval(body, @env.merge(Hash[*bindings.flatten]))
+      :let => lambda do |bindings, *expressions|
+        expressions.map do |expr|
+          eval(expr, @env.merge(Hash[*bindings.flatten]))
+        end.last
       end,
 
-      :fn => lambda do |arg_names, body|
-        Function.new(body, arg_names) do |*args|
+      :fn => lambda do |arg_names, *expressions|
+        Function.new(expressions, arg_names) do |*args|
           if args.size != arg_names.size
             raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
           end
 
-          eval(body, @env.merge(Hash[arg_names.zip(args)]))
+          expressions.map do |expr|
+            eval(expr, @env.merge(Hash[arg_names.zip(args)]))
+          end.last
         end
       end,
 
@@ -147,15 +151,11 @@ class Lisp
 
   def parse(input)
     tokens = lex(input)
-    if tokens.size == 1
-      tokens.shift
-    else
-      parse_sexp(tokens)
-    end
+    parse_expressions(tokens)
   end
 
   def eval(sexp, env=@env)
-    if sexp.is_a?(Array)
+    if sexp.is_a?(Sexp)
       case sexp[0]
       when :quote
         eval(:quote).call(*sexp[1..-1])
@@ -172,6 +172,8 @@ class Lisp
       else
         eval(sexp[0]).call(*sexp[1..-1].map { |o| eval(o, env) })
       end
+    elsif sexp.is_a?(Array) # Top level
+      sexp.map { |s| eval(s) }.last
     elsif sexp.is_a?(Symbol)
       env[sexp]
     else
@@ -181,11 +183,27 @@ class Lisp
 
   private
 
+  def parse_expressions(tokens)
+    expressions = []
+    until tokens.empty?
+      if tokens.first == :"("
+        expressions << parse_sexp(tokens)
+      elsif tokens.first == :")"
+        break
+      else
+        expressions << tokens.shift
+      end
+    end
+
+    expressions
+  end
+
   def parse_sexp(tokens)
     expect(:"(", tokens)
 
     sexp = Sexp.new
-    until tokens[0] == :")"
+
+    until tokens.first == :")"
       expect_more(tokens)
       t = tokens.shift
       sexp << if t == :"("
