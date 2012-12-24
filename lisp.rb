@@ -90,6 +90,7 @@ class Lisp
 
       :load => lambda do |filename|
         eval(parse(File.read(File.expand_path(filename)).gsub("\n", "")))
+        true
       end,
 
 
