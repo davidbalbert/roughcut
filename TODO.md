@@ -1,4 +1,3 @@
-- fix strings with spaces
 - Make functions closures (I think they are already, but we should double check)
 - fix reduce
 - define map and filter in terms of reduce
