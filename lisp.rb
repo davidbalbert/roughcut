@@ -45,7 +45,7 @@ class Lisp
       :* => lambda { |*args| args.reduce(:*) },
       :/ => lambda { |*args| args.reduce(:/) },
       :"=" => lambda { |a, b| a == b },
-      :puts => lambda { |*args| args.each { |a| p a }; nil },
+      :puts => lambda { |*args| args.each { |a| puts a }; nil },
 
       :eval => lambda { |list| eval(list) },
       :quote => lambda { |list| list },
