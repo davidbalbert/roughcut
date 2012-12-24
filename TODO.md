@@ -1,5 +1,5 @@
 - fix strings with spaces
-- Make functions closures (will the previous step do this automatically? probably not)
+- Make functions closures (I think they are already, but we should double check)
 - fix reduce
 - define map and filter in terms of reduce
 - define unquote
