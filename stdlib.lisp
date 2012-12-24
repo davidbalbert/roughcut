@@ -22,3 +22,5 @@
                               acc))
                         (quote ())
                         (reverse list))))
+
+(def unless (macro (condition yes no) `(if (not ~condition) ~yes ~no)))

@@ -38,13 +38,23 @@ class Lisp
     end
   end
 
+  class Macro < Function
+    def initialize(body, args, &block)
+      @sexp = Sexp.new([:macro, args, body])
+      @block = lambda &block
+    end
+  end
+
   def initialize
     @env = {
       :+ => lambda { |*args| args.reduce(:+) },
       :- => lambda { |*args| args.reduce(:-) },
       :* => lambda { |*args| args.reduce(:*) },
       :/ => lambda { |*args| args.reduce(:/) },
+
       :"=" => lambda { |a, b| a == b },
+      :not => lambda { |a| !a },
+
       :puts => lambda { |*args| args.each { |a| puts a }; nil },
 
       :eval => lambda { |list| eval(list) },
@@ -89,11 +99,22 @@ class Lisp
         end
       end,
 
+      :macro => lambda do |env, arg_names, body|
+        Macro.new(body, arg_names) do |*args|
+          p arg_names
+          args.each { |a| p a }
+          if args.size != arg_names.size
+            raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
+          end
+
+          eval(body, env.merge(Hash[arg_names.zip(args)]))
+        end
+      end,
+
       :load => lambda do |filename|
         eval(parse(File.read(File.expand_path(filename)).gsub("\n", "")))
         true
       end,
-
 
       :if => lambda do |env, condition, yes, no|
         if condition
@@ -187,10 +208,17 @@ class Lisp
         eval(:let, env).call(env, *sexp[1..-1])
       when :fn
         eval(:fn, env).call(env, *sexp[1..-1])
+      when :macro
+        eval(:macro, env).call(env, *sexp[1..-1])
       when :if
         eval(:if, env).call(env, eval(sexp[1], env), *sexp[2..-1])
       else
-        eval(sexp[0], env).call(*sexp[1..-1].map { |o| eval(o, env) })
+        f = eval(sexp[0], env)
+        if f.is_a?(Macro)
+          f.call(*sexp[1..-1])
+        else
+          f.call(*sexp[1..-1].map { |o| eval(o, env) })
+        end
       end
     elsif sexp.is_a?(Array) # Top level
       sexp.map { |s| eval(s, env) }.last
