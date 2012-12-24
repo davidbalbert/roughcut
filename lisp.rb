@@ -140,8 +140,8 @@ class Lisp
       if md = /^(\d+)/.match(input)
         tokens << md[1].to_i
         input = input[md[1].length..-1]
-      elsif md = /^('(.*)')/.match(input)
-        tokens << md[2]
+      elsif md = /^(')/.match(input)
+        tokens << md[1].to_sym
         input = input[md[1].length..-1]
       elsif md = /^("(.*)")/.match(input)
         tokens << md[2]
@@ -165,11 +165,6 @@ class Lisp
     end
 
     tokens
-  end
-
-  def parse(input)
-    tokens = lex(input)
-    parse_expressions(tokens)
   end
 
   def eval(sexp, env=@env)
@@ -201,40 +196,42 @@ class Lisp
     end
   end
 
-  private
+  def parse(input)
+    tokens = lex(input)
 
-  def parse_expressions(tokens)
-    expressions = []
-    until tokens.empty?
-      if tokens.first == :"("
-        expressions << parse_sexp(tokens)
-      elsif tokens.first == :")"
-        break
-      else
-        expressions << tokens.shift
-      end
-    end
+    expressions = parse_vals(tokens)
 
     expect_done(tokens)
 
     expressions
   end
 
+  private
+
+  def parse_vals(tokens)
+    vals = []
+    until tokens.empty? || tokens.first == :")"
+      vals << parse_val(tokens)
+    end
+
+    vals
+  end
+
+  def parse_val(tokens)
+    if tokens.first == :"'"
+      tokens.shift
+      Sexp.new([:quote, parse_val(tokens)])
+    elsif tokens.first == :"("
+      parse_sexp(tokens)
+    else
+      tokens.shift
+    end
+  end
+
   def parse_sexp(tokens)
     expect(:"(", tokens)
 
-    sexp = Sexp.new
-
-    until tokens.first == :")"
-      expect_more(tokens)
-      t = tokens.shift
-      sexp << if t == :"("
-        tokens.unshift(t)
-        parse_sexp(tokens)
-      else
-        t
-      end
-    end
+    sexp = Sexp.new(parse_vals(tokens))
 
     expect(:")", tokens)
 
