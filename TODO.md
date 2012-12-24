@@ -1,5 +1,4 @@
 - fix strings with spaces
-- Make nested lets work
 - Make functions closures (will the previous step do this automatically? probably not)
 - fix reduce
 - define map and filter in terms of reduce
