@@ -47,11 +47,11 @@ class Lisp
       :"=" => lambda { |a, b| a == b },
       :puts => lambda { |*args| args.each { |a| p a }; nil },
 
+      :eval => lambda { |list| eval(list) },
       :quote => lambda { |list| list },
-      :eval => lambda { |env, list| eval(list, env) },
       :first => lambda { |list| list[0] },
       :rest => lambda { |list| list[1..-1] || Sexp.new },
-      :def => lambda { |name, val| @env[name] = val },
+      :def => lambda { |env, name, val| @env[name] = eval(val, env) },
 
       # uncomment when I'm on 1.9
       # "cons" => lambda { |val, list=nil| list ? list.unshift(val) : Sexp.new([val]) }
@@ -125,7 +125,7 @@ class Lisp
         end
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
-        STDERR.puts(e.backtrace)
+        #STDERR.puts(e.backtrace)
       end
     end
   end
@@ -162,15 +162,11 @@ class Lisp
       when :quote
         eval(:quote, env).call(*sexp[1..-1])
       when :def
-        eval(:def, env).call(sexp[1], *sexp[2..-1].map do |o|
-          eval(o, env)
-        end)
+        eval(:def, env).call(env, *sexp[1..-1])
       when :let
         eval(:let, env).call(env, *sexp[1..-1])
       when :fn
         eval(:fn, env).call(env, *sexp[1..-1])
-      when :eval
-        eval(eval(sexp[1]))
       when :if
         eval(:if, env).call(env, eval(sexp[1], env), *sexp[2..-1])
       else
