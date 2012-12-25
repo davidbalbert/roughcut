@@ -161,13 +161,7 @@ class Lisp
       if md = /^(\d+)/.match(input)
         tokens << md[1].to_i
         input = input[md[1].length..-1]
-      elsif md = /^(')/.match(input)
-        tokens << md[1].to_sym
-        input = input[md[1].length..-1]
-      elsif md = /^(`)/.match(input)
-        tokens << md[1].to_sym
-        input = input[md[1].length..-1]
-      elsif md = /^(~)/.match(input)
+      elsif md = /^(['`~])/.match(input)
         tokens << md[1].to_sym
         input = input[md[1].length..-1]
       elsif md = /^("(.*?)")/.match(input)
