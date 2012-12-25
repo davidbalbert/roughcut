@@ -101,7 +101,6 @@ class Lisp
 
       :macro => lambda do |env, arg_names, body|
         Macro.new(body, arg_names) do |*args|
-          p arg_names
           args.each { |a| p a }
           if args.size != arg_names.size
             raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
@@ -171,7 +170,7 @@ class Lisp
       elsif md = /^(~)/.match(input)
         tokens << md[1].to_sym
         input = input[md[1].length..-1]
-      elsif md = /^("(.*)")/.match(input)
+      elsif md = /^("(.*?)")/.match(input)
         tokens << md[2]
         input = input[md[1].length..-1]
       elsif md = /^(nil)/.match(input)
