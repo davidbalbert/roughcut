@@ -104,7 +104,7 @@ class Lisp
         @env[name] = val
       end,
 
-      :cons => lambda { |val, list| list.unshift(val) },
+      :cons => lambda { |val, list| Sexp.new([val] + list) },
       :list? => lambda { |o| o.is_a?(Sexp) },
       :empty? => lambda { |list| list.empty? },
       :concat => lambda { |*lists| Sexp.new(lists.reduce(:+)) },
