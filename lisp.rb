@@ -324,7 +324,7 @@ class Lisp
   def zip_args(arg_names, args)
     if arg_names.include?(:&)
       required = arg_names.size - 2
-      Hash[arg_names[0..required].zip(args[0..required]) + [[arg_names[-1], args[required..-1]]]]
+      Hash[arg_names[0..required].zip(args[0..required]) + [[arg_names[-1], Sexp.new(args[required..-1])]]]
     else
       Hash[arg_names.zip(args)]
     end
