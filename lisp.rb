@@ -84,24 +84,24 @@ class Lisp
       end,
 
       :fn => lambda do |env, arg_names, *expressions|
+        min_args, max_args = parse_argument_list(arg_names)
+
         Function.new(expressions, arg_names) do |*args|
-          if args.size != arg_names.size
-            raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
-          end
+          check_arg_count(args, min_args, max_args)
 
           expressions.map do |expr|
-            eval(expr, env.merge(Hash[arg_names.zip(args)]))
+            eval(expr, env.merge(zip_args(arg_names, args)))
           end.last
         end
       end,
 
       :macro => lambda do |env, arg_names, body|
-        Macro.new(body, arg_names) do |*args|
-          if args.size != arg_names.size
-            raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
-          end
+        min_args, max_args = parse_argument_list(arg_names)
 
-          eval(body, env.merge(Hash[arg_names.zip(args)]))
+        Macro.new(body, arg_names) do |*args|
+          check_arg_count(args, min_args, max_args)
+
+          eval(body, env.merge(zip_args(arg_names, args)))
         end
       end,
 
@@ -142,7 +142,7 @@ class Lisp
         end
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
-        STDERR.puts(e.backtrace)
+        #STDERR.puts(e.backtrace)
       end
     end
   end
@@ -294,6 +294,36 @@ class Lisp
       end
     else
       sexp
+    end
+  end
+
+  # returns [min_args, max_args]
+  def parse_argument_list(arg_names)
+    if arg_names.include?(:&)
+      unless arg_names.count(:&) == 1 && arg_names.index(:&) == arg_names.size - 2
+        raise SyntaxError, "'&' can only be found in the second to last position of an argument list"
+      end
+
+      [arg_names.size - 2, -1]
+    else
+      [arg_names.size, arg_names.size]
+    end
+  end
+
+  def check_arg_count(args, min_args, max_args)
+    if args.size < min_args
+      raise ArgumentError, "wrong number of arguments (#{args.size} for #{min_args})"
+    elsif max_args != -1 && args.size > max_args
+      raise ArgumentError, "wrong number of arguments (#{args.size} for #{max_args})"
+    end
+  end
+
+  def zip_args(arg_names, args)
+    if arg_names.include?(:&)
+      required = arg_names.size - 2
+      Hash[arg_names[0..required].zip(args[0..required]) + [[arg_names[-1], args[required..-1]]]]
+    else
+      Hash[arg_names.zip(args)]
     end
   end
 end

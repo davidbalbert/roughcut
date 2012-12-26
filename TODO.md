@@ -1,5 +1,13 @@
-Status: Our unless macro isn't working. It seems that the yes and no expressions are somehow getting combined. Need to pry at them
-
-- define defmacro?
+- define defmacro
 - define defn
+- add names to functions and macros
+- define macroexpand
 - implement let as a macro
+- make an id type and allow :symbols to be ruby symbols
+- add `send` special form
+- fix arg counts functions defined in ruby that take an implicit env
+
+    lisp.rb> (def asdf 1 2)
+    ArgumentError: wrong number of arguments (4 for 3)
+
+    # Should read (3 for 2)
