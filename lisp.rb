@@ -55,31 +55,26 @@ class Lisp
       :"=" => lambda { |a, b| a == b },
       :not => lambda { |a| !a },
 
-      :puts => lambda { |*args| args.each { |a| puts a }; nil },
+      :puts => lambda do |*args|
+        args.each do |a|
+          if a.is_a?(Sexp)
+            p a
+          else
+            puts a
+          end
+        end
+
+        nil
+      end,
 
       :eval => lambda { |list| eval(list) },
       :quote => lambda { |list| list },
-      :quasiquote => lambda { |list| process_unquotes(list) },
+      :quasiquote => lambda { |env, list| process_unquotes(list, env) },
       :first => lambda { |list| list[0] },
       :rest => lambda { |list| list[1..-1] || Sexp.new },
       :def => lambda { |env, name, val| @env[name] = eval(val, env) },
 
-      # uncomment when I'm on 1.9
-      # "cons" => lambda { |val, list=nil| list ? list.unshift(val) : Sexp.new([val]) }
-
-      # ugly hack for ruby 1.8
-      :cons => lambda do |*args|
-        if args.size == 0
-          raise ArgumentError, "wrong number of arguments (0 for 1)"
-        elsif args.size > 2
-          raise ArgumentError, "wrong number of arguments (#{args.size} for 2)"
-        end
-
-        val = args[0]
-        list = args[1] || nil
-
-        list ? list.unshift(val) : Sexp.new([val])
-      end,
+      :cons => lambda { |val, list| list.unshift(val) },
 
       :let => lambda do |env, bindings, *expressions|
         expressions.map do |expr|
@@ -101,7 +96,6 @@ class Lisp
 
       :macro => lambda do |env, arg_names, body|
         Macro.new(body, arg_names) do |*args|
-          args.each { |a| p a }
           if args.size != arg_names.size
             raise ArgumentError, "wrong number of arguments (#{args.size} for #{arg_names.size})"
           end
@@ -147,7 +141,7 @@ class Lisp
         end
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
-        #STDERR.puts(e.backtrace)
+        STDERR.puts(e.backtrace)
       end
     end
   end
@@ -194,7 +188,7 @@ class Lisp
       when :quote
         eval(:quote, env).call(*sexp[1..-1])
       when :quasiquote
-        eval(:quasiquote, env).call(*sexp[1..-1])
+        eval(:quasiquote, env).call(env, *sexp[1..-1])
       when :def
         eval(:def, env).call(env, *sexp[1..-1])
       when :let
@@ -205,13 +199,10 @@ class Lisp
         eval(:macro, env).call(env, *sexp[1..-1])
       when :if
         eval(:if, env).call(env, eval(sexp[1], env), *sexp[2..-1])
+      when Macro
+        #eval(:macroexpand, env).call(sexp)
       else
-        f = eval(sexp[0], env)
-        if f.is_a?(Macro)
-          f.call(*sexp[1..-1])
-        else
-          f.call(*sexp[1..-1].map { |o| eval(o, env) })
-        end
+        eval(sexp[0], env).call(*sexp[1..-1].map { |o| eval(o, env) })
       end
     elsif sexp.is_a?(Array) # Top level
       sexp.map { |s| eval(s, env) }.last
@@ -288,12 +279,12 @@ class Lisp
     raise "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
   end
 
-  def process_unquotes(sexp)
+  def process_unquotes(sexp, env)
     if sexp.is_a?(Sexp)
       if sexp.first == :unquote
-        eval(*sexp[1..-1])
+        eval(*sexp[1..-1], env)
       else
-        Sexp.new(sexp.map { |el| process_unquotes(el) })
+        Sexp.new(sexp.map { |el| process_unquotes(el, env) })
       end
     else
       sexp
