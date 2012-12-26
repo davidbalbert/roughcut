@@ -1,5 +1,6 @@
 (def VERSION "0.0.0")
 
+(def list (fn (& args) args))
 
 (def unless (macro (condition yes no)
                    `(if (not ~condition) ~yes ~no)))
