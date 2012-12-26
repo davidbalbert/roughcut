@@ -55,6 +55,7 @@ class Lisp
       :"=" => lambda { |a, b| a == b },
       :not => lambda { |a| !a },
 
+      :p => lambda { |*args| args.each { |a| p a } },
       :puts => lambda do |*args|
         args.each do |a|
           if a.is_a?(Sexp)
