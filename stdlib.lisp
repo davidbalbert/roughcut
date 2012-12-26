@@ -1,12 +1,15 @@
 (def VERSION "0.0.0")
 
-(def defn (macro (name args & expressions)
-                 `(def ~name ~(cons 'fn (cons args expressions)))))
+(def defmacro (macro (name args body)
+                     `(def ~name (macro ~args ~body))))
+
+(defmacro defn (name args & expressions)
+  `(def ~name ~(cons 'fn (cons args expressions))))
 
 (defn list (& args) args)
 
-(def unless (macro (condition yes no)
-                   `(if (not ~condition) ~yes ~no)))
+(defmacro unless (condition yes no)
+  `(if (not ~condition) ~yes ~no))
 
 (defn reduce (f acc list)
       (if (first list)

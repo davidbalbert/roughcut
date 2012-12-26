@@ -1,6 +1,3 @@
-- define macroexpand-all
-- define defmacro
-- define defn
 - add names to functions and macros
 - implement let as a macro
 - make an id type and allow :symbols to be ruby symbols
