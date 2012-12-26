@@ -109,12 +109,6 @@ class Lisp
       :empty? => lambda { |list| list.empty? },
       :concat => lambda { |*lists| Sexp.new(lists.reduce(:+)) },
 
-      :let => lambda do |env, bindings, *expressions|
-        expressions.map do |expr|
-          eval(expr, env.merge(Hash[*bindings.flatten]))
-        end.last
-      end,
-
       :fn => lambda do |env, arg_names, *expressions|
         if expressions.empty?
           raise SyntaxError, "wrong number of arguments (1 for 2)"
@@ -229,8 +223,6 @@ class Lisp
         eval(:quasiquote, env).call(env, *sexp[1..-1])
       when :def
         eval(:def, env).call(env, *sexp[1..-1])
-      when :let
-        eval(:let, env).call(env, *sexp[1..-1])
       when :fn
         eval(:fn, env).call(env, *sexp[1..-1])
       when :macro

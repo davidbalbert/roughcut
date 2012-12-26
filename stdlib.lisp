@@ -9,12 +9,10 @@
 (defn even? (n) (= 0 (mod n 2)))
 (defn odd? (n) (= 1 (mod n 2)))
 
-"(defmacro let (bindings & expressions)
-  (concat `(fn ~(filter-with-index
-                  (fn (el idx) (odd? idx)))
-               ~expressions)
-          (filter-with-index
-            (fn (el idx) (even? idx)))))"
+(defmacro let (bindings & expressions)
+  (concat `(~(concat `(fn ~(filter-by-index even? bindings))
+                     expressions))
+          (filter-by-index odd? bindings)))
 
 (defn list (& args) args)
 
@@ -22,7 +20,7 @@
   `(if (not ~condition) ~yes ~no))
 
 (defn reduce (f acc list)
-      (if (first list)
+      (unless (empty? list)
         (reduce f (f acc (first list)) (rest list))
         acc))
 
@@ -43,6 +41,26 @@
                     acc))
               ()
               (reverse list)))
+
+(defn reduce-with-index (f acc list)
+        (reduce-with-index-helper f acc list 0))
+
+(defn reduce-with-index-helper (f acc list index)
+      (unless (empty? list)
+        (reduce-with-index-helper
+          f
+          (f acc (first list) index)
+          (rest list)
+          (+ index 1))
+        acc))
+
+(defn filter-by-index (pred list)
+      (reverse (reduce-with-index (fn (acc el idx)
+                                      (if (pred idx)
+                                        (cons el acc)
+                                        acc))
+                                  ()
+                                  list)))
 
 (defn macroexpand (form)
       (macroexpand-helper (macroexpand-1 form) form))
