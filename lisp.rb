@@ -71,6 +71,7 @@ class Lisp
       :eval => lambda { |list| eval(list) },
       :quote => lambda { |list| list },
       :quasiquote => lambda { |env, list| process_unquotes(list, env) },
+      :"macroexpand-1" => lambda { |sexp| macroexpand_1(sexp) },
       :first => lambda { |list| list[0] },
       :rest => lambda { |list| list[1..-1] || Sexp.new },
       :def => lambda { |env, name, val| @env[name] = eval(val, env) },
@@ -324,6 +325,14 @@ class Lisp
       Hash[arg_names[0..required].zip(args[0..required]) + [[arg_names[-1], args[required..-1]]]]
     else
       Hash[arg_names.zip(args)]
+    end
+  end
+
+  def macroexpand_1(sexp)
+    if sexp.is_a?(Sexp) && (macro = eval(sexp[0])).is_a?(Macro)
+      macro.call(*sexp[1..-1])
+    else
+      sexp
     end
   end
 end
