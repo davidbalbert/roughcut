@@ -183,7 +183,9 @@ class Lisp
   end
 
   def eval(sexp, env=@env)
-    if sexp.is_a?(Sexp)
+    if sexp.is_a?(Sexp) && sexp.empty?
+      sexp # () should return the empty list
+    elsif sexp.is_a?(Sexp)
       case sexp[0]
       when :quote
         eval(:quote, env).call(*sexp[1..-1])
