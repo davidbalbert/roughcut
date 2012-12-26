@@ -69,6 +69,7 @@ class Lisp
       :- => lambda { |*args| args.reduce(:-) },
       :* => lambda { |*args| args.reduce(:*) },
       :/ => lambda { |*args| args.reduce(:/) },
+      :mod => lambda { |a, b| a % b },
 
       :"=" => lambda { |a, b| a == b },
       :not => lambda { |a| !a },
@@ -105,6 +106,8 @@ class Lisp
 
       :cons => lambda { |val, list| list.unshift(val) },
       :list? => lambda { |o| o.is_a?(Sexp) },
+      :empty? => lambda { |list| list.empty? },
+      :concat => lambda { |*lists| Sexp.new(lists.reduce(:+)) },
 
       :let => lambda do |env, bindings, *expressions|
         expressions.map do |expr|

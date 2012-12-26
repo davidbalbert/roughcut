@@ -6,6 +6,16 @@
 (defmacro defn (name args & expressions)
   `(def ~name ~(cons 'fn (cons args expressions))))
 
+(defn even? (n) (= 0 (mod n 2)))
+(defn odd? (n) (= 1 (mod n 2)))
+
+"(defmacro let (bindings & expressions)
+  (concat `(fn ~(filter-with-index
+                  (fn (el idx) (odd? idx)))
+               ~expressions)
+          (filter-with-index
+            (fn (el idx) (even? idx)))))"
+
 (defn list (& args) args)
 
 (defmacro unless (condition yes no)
