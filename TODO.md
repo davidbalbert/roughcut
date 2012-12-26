@@ -5,6 +5,8 @@
 - implement let as a macro
 - make an id type and allow :symbols to be ruby symbols
 - add `send` special form
+- add nice lisp backtraces
+  Make them work with lisp functions that call ruby methods
 - fix arg counts functions defined in ruby that take an implicit env
 
 ```

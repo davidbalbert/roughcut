@@ -78,6 +78,7 @@ class Lisp
       :apply => lambda { |f, *args, arg_list| eval(Sexp.new([f, *args, *arg_list])) },
 
       :cons => lambda { |val, list| list.unshift(val) },
+      :list? => lambda { |o| o.is_a?(Sexp) },
 
       :let => lambda do |env, bindings, *expressions|
         expressions.map do |expr|
