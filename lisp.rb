@@ -75,6 +75,7 @@ class Lisp
       :first => lambda { |list| list[0] },
       :rest => lambda { |list| list[1..-1] || Sexp.new },
       :def => lambda { |env, name, val| @env[name] = eval(val, env) },
+      :apply => lambda { |f, *args, arg_list| eval(Sexp.new([f, *args, *arg_list])) },
 
       :cons => lambda { |val, list| list.unshift(val) },
 
