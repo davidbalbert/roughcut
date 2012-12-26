@@ -1,6 +1,7 @@
 (def VERSION "0.0.0")
 
-(def unless (macro (condition yes no) `(if (not ~condition) ~yes ~no)))
+(def unless (macro (condition yes no)
+                   `(if (not ~condition) ~yes ~no)))
 
 (def reduce (fn (f acc list)
                 (if (first list)

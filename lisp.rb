@@ -201,10 +201,13 @@ class Lisp
         eval(:macro, env).call(env, *sexp[1..-1])
       when :if
         eval(:if, env).call(env, eval(sexp[1], env), *sexp[2..-1])
-      when Macro
-        #eval(:macroexpand, env).call(sexp)
       else
-        eval(sexp[0], env).call(*sexp[1..-1].map { |o| eval(o, env) })
+        f = eval(sexp[0], env)
+        if f.is_a?(Macro)
+          eval(f.call(*sexp[1..-1]), env)
+        else
+          f.call(*sexp[1..-1].map { |o| eval(o, env) })
+        end
       end
     elsif sexp.is_a?(Array) # Top level
       sexp.map { |s| eval(s, env) }.last
