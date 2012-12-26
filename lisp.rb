@@ -16,13 +16,19 @@ class Lisp
   end
 
   class Function
-    def initialize(expressions, args, &block)
+    def initialize(args, expressions, &block)
       @sexp = Sexp.new([:fn, args, *expressions])
       @block = lambda &block
     end
 
-    def to_proc
-      @block
+    def name=(name)
+      # once named, functions cannot be renamed
+      unless @name
+        @name = name
+        set_sexp_with_name!
+      end
+
+      name
     end
 
     def call(*args)
@@ -36,12 +42,24 @@ class Lisp
     def inspect
       to_s
     end
+
+    private
+
+    def set_sexp_with_name!
+      @sexp = Sexp.new([:defn, @name, *@sexp[1..-1]])
+    end
   end
 
   class Macro < Function
-    def initialize(body, args, &block)
+    def initialize(args, body, &block)
       @sexp = Sexp.new([:macro, args, body])
       @block = lambda &block
+    end
+
+    private
+
+    def set_sexp_with_name!
+      @sexp = Sexp.new([:defmacro, @name, *@sexp[1..-1]])
     end
   end
 
@@ -74,8 +92,16 @@ class Lisp
       :"macroexpand-1" => lambda { |sexp| macroexpand_1(sexp) },
       :first => lambda { |list| list[0] },
       :rest => lambda { |list| list[1..-1] || Sexp.new },
-      :def => lambda { |env, name, val| @env[name] = eval(val, env) },
       :apply => lambda { |f, *args, arg_list| eval(Sexp.new([f] + args + arg_list)) },
+      :def => lambda do |env, name, val|
+        val = eval(val, env)
+        # for functions and macros
+        if val.respond_to?(:name=)
+          val.name = name
+        end
+
+        @env[name] = val
+      end,
 
       :cons => lambda { |val, list| list.unshift(val) },
       :list? => lambda { |o| o.is_a?(Sexp) },
@@ -87,9 +113,12 @@ class Lisp
       end,
 
       :fn => lambda do |env, arg_names, *expressions|
+        if expressions.empty?
+          raise SyntaxError, "wrong number of arguments (1 for 2)"
+        end
         min_args, max_args = parse_argument_list(arg_names)
 
-        Function.new(expressions, arg_names) do |*args|
+        Function.new(arg_names, expressions) do |*args|
           check_arg_count(args, min_args, max_args)
 
           expressions.map do |expr|
@@ -101,7 +130,7 @@ class Lisp
       :macro => lambda do |env, arg_names, body|
         min_args, max_args = parse_argument_list(arg_names)
 
-        Macro.new(body, arg_names) do |*args|
+        Macro.new(arg_names, body) do |*args|
           check_arg_count(args, min_args, max_args)
 
           eval(body, env.merge(zip_args(arg_names, args)))

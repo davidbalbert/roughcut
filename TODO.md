@@ -1,5 +1,5 @@
-- add names to functions and macros
 - implement let as a macro
+- Catch SyntaxError in the repl
 - make an id type and allow :symbols to be ruby symbols
 - add `send` special form
 - add nice lisp backtraces
