@@ -7,7 +7,7 @@
 - add `send` special form
 - fix arg counts functions defined in ruby that take an implicit env
 
-    lisp.rb> (def asdf 1 2)
-    ArgumentError: wrong number of arguments (4 for 3)
-
-    # Should read (3 for 2)
+```
+lisp.rb> (def asdf 1 2)
+ArgumentError: wrong number of arguments (4 for 3) # should read (3 for 2)
+```
