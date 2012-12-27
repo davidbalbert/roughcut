@@ -13,6 +13,7 @@ class Lisp
     def to_s
       @sym.to_s
     end
+    alias to_str to_s
 
     def inspect
       "id:#{@sym.to_s}"
@@ -123,6 +124,14 @@ class Lisp
         nil
       end,
 
+      :send => lambda do |receiver, method=nil, *args|
+        if method
+          receiver.send(method, *args)
+        else
+          receiver
+        end
+      end,
+
       :eval => lambda { |list| eval(list) },
       :quote => lambda { |list| list },
       :quasiquote => lambda { |env, list| process_unquotes(list, env) },
@@ -199,6 +208,8 @@ class Lisp
 
       begin
         out = eval(parse(input))
+        @env[:_] = out
+
         print "=> "
         if out.is_a?(Sexp)
           p out
@@ -227,9 +238,6 @@ class Lisp
       elsif md = /\A(\d+)/.match(input)
         tokens << md[1].to_i
         input = input[md[1].length..-1]
-      elsif md =/\A(:([^\s()"'`~:]*))/.match(input)
-        tokens << md[2].to_sym
-        input = input[md[1].length..-1]
       elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
         input = input[md[1].length..-1]
@@ -242,8 +250,11 @@ class Lisp
       elsif md = /\A(false)/.match(input)
         tokens << false
         input = input[md[1].length..-1]
-      elsif md = /\A([^\s()"'`~:]*)/.match(input)
+      elsif md = /\A((::)?[^\s()"'`~:]+(::[^\s()"'`~:]+)*)/.match(input)
         tokens << Id.new(md[1].to_sym)
+        input = input[md[1].length..-1]
+      elsif md =/\A(:([^\s()"'`~:]*))/.match(input)
+        tokens << md[2].to_sym
         input = input[md[1].length..-1]
       else
         raise SyntaxError, "Error at input: #{input}"
@@ -271,6 +282,16 @@ class Lisp
         eval(sexp[0], env).call(env, *sexp[1..-1])
       when :if
         eval(sexp[0], env).call(env, eval(sexp[1], env), *sexp[2..-1])
+      when :send
+        # send is a special form that evals it's second argument as ruby code
+        receiver = sexp[1]
+        if receiver.is_a?(Id) && env.has_key?(receiver.to_sym)
+          receiver = env[receiver.to_sym]
+        elsif receiver.is_a?(Id)
+          receiver = super(receiver)
+        end
+
+        eval(sexp[0], env).call(receiver, *sexp[2..-1].map { |o| eval(o, env) })
       else
         f = eval(sexp[0], env)
         if f.is_a?(Macro)
