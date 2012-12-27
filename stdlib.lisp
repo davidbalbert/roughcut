@@ -105,7 +105,7 @@
               (reverse list)))
 
 (defn reduce-with-index (f acc list)
-        (reduce-with-index-helper f acc list 0))
+      (reduce-with-index-helper f acc list 0))
 
 (defn reduce-with-index-helper (f acc list index)
       (unless (empty? list)
