@@ -1,19 +1,32 @@
 (def VERSION "0.0.0")
 
-; First we'll make defmacro
+; We'll start with quote
+
+(def quote (fn (list) list))
+
+; Then defmacro
 
 (def defmacro (macro (name args body)
                      `(def ~name (macro ~args ~body))))
 
-; Now we'll use it! Let's make defn.
+; Defn needs cons, which we'll implement in terms of concat
+
+(def concat (fn (& lists) (send lists :flatten 1)))
+(def cons (fn (val list) (concat `(~val) list)))
+
+; And finally defn! We're up and running
 
 (defmacro defn (name args & expressions)
   `(def ~name ~(cons 'fn (cons args expressions))))
+
 
 (defmacro let (bindings & expressions)
   (concat `(~(concat `(fn ~(filter-by-index even? bindings))
                      expressions))
           (filter-by-index odd? bindings)))
+
+(defmacro do (& expressions)
+  (concat '(let ()) expressions))
 
 
 ; List manipulation
@@ -28,7 +41,6 @@
 (defn empty? (list) (= list ()))
 
 (defn eval (list) (send self :eval list))
-(defn quote (list) list)
 
 ; Mathy stuff
 

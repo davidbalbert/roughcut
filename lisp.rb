@@ -125,7 +125,8 @@ class Lisp
 
       :quasiquote => lambda { |env, list| process_unquotes(list, env) },
       :"macroexpand-1" => lambda { |sexp| macroexpand_1(sexp) },
-      :apply => lambda { |f, *args, arg_list| eval(Sexp.new([f] + args + arg_list)) },
+      :apply => lambda { |f, *args, arg_list| f.call(*(args + arg_list)) },
+
       :def => lambda do |env, name, val|
         val = eval(val, env)
         # for functions and macros
@@ -135,9 +136,6 @@ class Lisp
 
         @env[name.to_sym] = val
       end,
-
-      :cons => lambda { |val, list| Sexp.new([val] + list) },
-      :concat => lambda { |*lists| Sexp.new(lists.reduce(:+)) },
 
       :fn => lambda do |env, arg_names, *expressions|
         if expressions.empty?
