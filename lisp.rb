@@ -1,11 +1,38 @@
 require 'pp'
 
 class Lisp
+  class Id
+    def initialize(sym)
+      @sym = sym
+    end
+
+    def ==(other)
+      @sym == other.to_sym
+    end
+
+    def to_s
+      @sym.to_s
+    end
+
+    def inspect
+      "id:#{@sym.to_s}"
+    end
+
+    def to_sym
+      @sym
+    end
+  end
+
   class Sexp < Array
     def to_s
       "(#{reduce("") do |out, o|
-        o = "\"#{o}\"" if o.is_a?(String)
-        o = "nil" if o.nil?
+        if o.is_a?(String)
+          o = "\"#{o}\""
+        elsif o.is_a?(Symbol)
+          o = o.inspect
+        elsif o.nil?
+          o = "nil"
+        end
         out << o.to_s + " "
       end.strip})"
     end
@@ -17,7 +44,7 @@ class Lisp
 
   class Function
     def initialize(args, expressions, &block)
-      @sexp = Sexp.new([:fn, args, *expressions])
+      @sexp = Sexp.new([Id.new(:fn), args, *expressions])
       @block = lambda &block
     end
 
@@ -46,22 +73,24 @@ class Lisp
     private
 
     def set_sexp_with_name!
-      @sexp = Sexp.new([:defn, @name, *@sexp[1..-1]])
+      @sexp = Sexp.new([Id.new(:defn), @name, *@sexp[1..-1]])
     end
   end
 
   class Macro < Function
     def initialize(args, body, &block)
-      @sexp = Sexp.new([:macro, args, body])
+      @sexp = Sexp.new([Id.new(:macro), args, body])
       @block = lambda &block
     end
 
     private
 
     def set_sexp_with_name!
-      @sexp = Sexp.new([:defmacro, @name, *@sexp[1..-1]])
+      @sexp = Sexp.new([Id.new(:defmacro), @name, *@sexp[1..-1]])
     end
   end
+
+  attr_reader :env
 
   def initialize
     @env = {
@@ -74,15 +103,22 @@ class Lisp
       :"=" => lambda { |a, b| a == b },
       :not => lambda { |a| !a },
 
-      :p => lambda { |*args| args.each { |a| p a } },
-      :puts => lambda do |*args|
-        args.each do |a|
-          if a.is_a?(Sexp)
-            p a
+      :p => lambda do |*args|
+        out = args.map do |a|
+          if a.is_a?(Id)
+            a.to_s
           else
-            puts a
+            a.inspect
           end
         end
+        puts out
+
+        nil
+      end,
+
+      :puts => lambda do |*args|
+        out = args.map { |a| a.to_s }.join(" ")
+        puts out
 
         nil
       end,
@@ -101,7 +137,7 @@ class Lisp
           val.name = name
         end
 
-        @env[name] = val
+        @env[name.to_sym] = val
       end,
 
       :cons => lambda { |val, list| Sexp.new([val] + list) },
@@ -186,10 +222,13 @@ class Lisp
       input = input.lstrip
 
       if md = /\A(['`~()])/.match(input)
-        tokens << md[1].to_sym
+        tokens << Id.new(md[1].to_sym)
         input = input[md[1].length..-1]
       elsif md = /\A(\d+)/.match(input)
         tokens << md[1].to_i
+        input = input[md[1].length..-1]
+      elsif md =/\A(:([^\s()"'`~:]*))/.match(input)
+        tokens << md[2].to_sym
         input = input[md[1].length..-1]
       elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
@@ -203,8 +242,8 @@ class Lisp
       elsif md = /\A(false)/.match(input)
         tokens << false
         input = input[md[1].length..-1]
-      elsif md = /\A([^\s()"'`~]*)/.match(input)
-        tokens << md[1].to_sym
+      elsif md = /\A([^\s()"'`~:]*)/.match(input)
+        tokens << Id.new(md[1].to_sym)
         input = input[md[1].length..-1]
       else
         raise SyntaxError, "Error at input: #{input}"
@@ -219,19 +258,19 @@ class Lisp
     if sexp.is_a?(Sexp) && sexp.empty?
       sexp # () should return the empty list
     elsif sexp.is_a?(Sexp)
-      case sexp[0]
+      case sexp[0].to_sym
       when :quote
-        eval(:quote, env).call(*sexp[1..-1])
+        eval(sexp[0], env).call(*sexp[1..-1])
       when :quasiquote
-        eval(:quasiquote, env).call(env, *sexp[1..-1])
+        eval(sexp[0], env).call(env, *sexp[1..-1])
       when :def
-        eval(:def, env).call(env, *sexp[1..-1])
+        eval(sexp[0], env).call(env, *sexp[1..-1])
       when :fn
-        eval(:fn, env).call(env, *sexp[1..-1])
+        eval(sexp[0], env).call(env, *sexp[1..-1])
       when :macro
-        eval(:macro, env).call(env, *sexp[1..-1])
+        eval(sexp[0], env).call(env, *sexp[1..-1])
       when :if
-        eval(:if, env).call(env, eval(sexp[1], env), *sexp[2..-1])
+        eval(sexp[0], env).call(env, eval(sexp[1], env), *sexp[2..-1])
       else
         f = eval(sexp[0], env)
         if f.is_a?(Macro)
@@ -242,9 +281,9 @@ class Lisp
       end
     elsif sexp.is_a?(Array) # Top level
       sexp.map { |s| eval(s, env) }.last
-    elsif sexp.is_a?(Symbol)
-      if env.has_key?(sexp)
-        env[sexp]
+    elsif sexp.is_a?(Id)
+      if env.has_key?(sexp.to_sym)
+        env[sexp.to_sym]
       else
         raise NameError, "#{sexp} is undefined"
       end
@@ -277,13 +316,13 @@ class Lisp
   def parse_val(tokens)
     if tokens.first == :"'"
       tokens.shift
-      Sexp.new([:quote, parse_val(tokens)])
+      Sexp.new([Id.new(:quote), parse_val(tokens)])
     elsif tokens.first == :`
       tokens.shift
-      Sexp.new([:quasiquote, parse_val(tokens)])
+      Sexp.new([Id.new(:quasiquote), parse_val(tokens)])
     elsif tokens.first == :~
       tokens.shift
-      Sexp.new([:unquote, parse_val(tokens)])
+      Sexp.new([Id.new(:unquote), parse_val(tokens)])
     elsif tokens.first == :"("
       parse_sexp(tokens)
     else
@@ -345,6 +384,7 @@ class Lisp
   end
 
   def zip_args(arg_names, args)
+    arg_names = arg_names.map(&:to_sym)
     if arg_names.include?(:&)
       required = arg_names.size - 2
       Hash[arg_names[0..required].zip(args[0..required]) + [[arg_names[-1], Sexp.new(args[required..-1])]]]
