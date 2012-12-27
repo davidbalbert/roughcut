@@ -58,6 +58,10 @@
 
 (defn = (a b) (send a :== b))
 (defn not (a) (send a :!))
+(defn < (a b) (send a :< b))
+(defn <= (a b) (send a :<= b))
+(defn > (a b) (send a :> b))
+(defn >= (a b) (send a :>= b))
 
 (defmacro or (condition & args)
   (if (empty? args)
