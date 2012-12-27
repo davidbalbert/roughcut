@@ -203,7 +203,7 @@ class Lisp
       elsif md = /\A(false)/.match(input)
         tokens << false
         input = input[md[1].length..-1]
-      elsif md = /\A([^\s)]*)/.match(input)
+      elsif md = /\A([^\s()"'`~]*)/.match(input)
         tokens << md[1].to_sym
         input = input[md[1].length..-1]
       else
