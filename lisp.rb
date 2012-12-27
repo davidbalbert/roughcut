@@ -178,30 +178,30 @@ class Lisp
 
   def lex(input)
     # add space around parens and remove comments that start with a semicolon
-    input = input.gsub("(", " ( ").gsub(")", " ) ").gsub(/;.*?$/, "").strip
+    input = input.gsub(/;.*?$/, "").strip
     tokens = []
     until input.empty?
       input = input.lstrip
 
-      if md = /^(\d+)/.match(input)
-        tokens << md[1].to_i
-        input = input[md[1].length..-1]
-      elsif md = /^(['`~])/.match(input)
+      if md = /\A(['`~()])/.match(input)
         tokens << md[1].to_sym
         input = input[md[1].length..-1]
-      elsif md = /^("(.*?)")/.match(input)
+      elsif md = /\A(\d+)/.match(input)
+        tokens << md[1].to_i
+        input = input[md[1].length..-1]
+      elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
         input = input[md[1].length..-1]
-      elsif md = /^(nil)/.match(input)
+      elsif md = /\A(nil)/.match(input)
         tokens << nil
         input = input[md[1].length..-1]
-      elsif md = /^(true)/.match(input)
+      elsif md = /\A(true)/.match(input)
         tokens << true
         input = input[md[1].length..-1]
-      elsif md = /^(false)/.match(input)
+      elsif md = /\A(false)/.match(input)
         tokens << false
         input = input[md[1].length..-1]
-      elsif md = /^(\S*)\s?/.match(input)
+      elsif md = /\A([^\s)]*)/.match(input)
         tokens << md[1].to_sym
         input = input[md[1].length..-1]
       else
