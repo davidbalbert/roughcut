@@ -1,4 +1,8 @@
-- add `send` special form
+- add range literals
+  Use this for `rest`
+- Look into macroexpand-1 inside a let. Will this work?
+  (let (foo (macro ...)) (macroexpand-1) foo)
+- Can quasiquote be written in lisp?
 - add nice lisp backtraces
   Make them work with lisp functions that call ruby methods
 - fix arg counts functions defined in ruby that take an implicit env

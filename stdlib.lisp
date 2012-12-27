@@ -18,14 +18,43 @@
 
 ; List manipulation
 
-(defn list (& args) args)
+(defn first (list) (send list :[] 0))
+(defn rest (list)
+      (or (send list :[] (send Range :new 1 -1))
+          ()))
 
+(defn list (& args) args)
+(defn list? (obj) (send obj :is_a? (send Sexp)))
+(defn empty? (list) (= list ()))
+
+(defn eval (list) (send self :eval list))
+(defn quote (list) list)
 
 ; Mathy stuff
+
+(defn + (& args) (send args :reduce :+))
+(defn - (& args) (send args :reduce :-))
+(defn * (& args) (send args :reduce :*))
+(defn / (& args) (send args :reduce :/))
+(defn mod (a b) (send a :% b))
 
 (defn even? (n) (= 0 (mod n 2)))
 (defn odd? (n) (= 1 (mod n 2)))
 
+
+; Boolean logic
+
+(defn = (a b) (send a :== b))
+(defn not (a) (send a :!))
+
+(defmacro or (condition & args)
+  (if (empty? args)
+    `(if ~condition
+       ~condition
+       false)
+    `(if ~condition
+       ~condition
+       ~(concat '(or) args))))
 
 ; Control flow
 ; TODO: add cond here

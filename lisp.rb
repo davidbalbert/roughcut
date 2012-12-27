@@ -95,15 +95,6 @@ class Lisp
 
   def initialize
     @env = {
-      :+ => lambda { |*args| args.reduce(:+) },
-      :- => lambda { |*args| args.reduce(:-) },
-      :* => lambda { |*args| args.reduce(:*) },
-      :/ => lambda { |*args| args.reduce(:/) },
-      :mod => lambda { |a, b| a % b },
-
-      :"=" => lambda { |a, b| a == b },
-      :not => lambda { |a| !a },
-
       :p => lambda do |*args|
         out = args.map do |a|
           if a.is_a?(Id)
@@ -132,12 +123,8 @@ class Lisp
         end
       end,
 
-      :eval => lambda { |list| eval(list) },
-      :quote => lambda { |list| list },
       :quasiquote => lambda { |env, list| process_unquotes(list, env) },
       :"macroexpand-1" => lambda { |sexp| macroexpand_1(sexp) },
-      :first => lambda { |list| list[0] },
-      :rest => lambda { |list| list[1..-1] || Sexp.new },
       :apply => lambda { |f, *args, arg_list| eval(Sexp.new([f] + args + arg_list)) },
       :def => lambda do |env, name, val|
         val = eval(val, env)
@@ -150,8 +137,6 @@ class Lisp
       end,
 
       :cons => lambda { |val, list| Sexp.new([val] + list) },
-      :list? => lambda { |o| o.is_a?(Sexp) },
-      :empty? => lambda { |list| list.empty? },
       :concat => lambda { |*lists| Sexp.new(lists.reduce(:+)) },
 
       :fn => lambda do |env, arg_names, *expressions|
@@ -213,6 +198,8 @@ class Lisp
         print "=> "
         if out.is_a?(Sexp)
           p out
+        elsif out.is_a?(Id)
+          puts out
         else
           pp out
         end
@@ -235,7 +222,7 @@ class Lisp
       if md = /\A(['`~()])/.match(input)
         tokens << Id.new(md[1].to_sym)
         input = input[md[1].length..-1]
-      elsif md = /\A(\d+)/.match(input)
+      elsif md = /\A(-?\d+)/.match(input)
         tokens << md[1].to_i
         input = input[md[1].length..-1]
       elsif md = /\A("(.*?)")/.match(input)
