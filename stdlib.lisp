@@ -1,23 +1,40 @@
 (def VERSION "0.0.0")
 
+; First we'll make defmacro
+
 (def defmacro (macro (name args body)
                      `(def ~name (macro ~args ~body))))
 
+; Now we'll use it! Let's make defn.
+
 (defmacro defn (name args & expressions)
   `(def ~name ~(cons 'fn (cons args expressions))))
-
-(defn even? (n) (= 0 (mod n 2)))
-(defn odd? (n) (= 1 (mod n 2)))
 
 (defmacro let (bindings & expressions)
   (concat `(~(concat `(fn ~(filter-by-index even? bindings))
                      expressions))
           (filter-by-index odd? bindings)))
 
+
+; List manipulation
+
 (defn list (& args) args)
+
+
+; Mathy stuff
+
+(defn even? (n) (= 0 (mod n 2)))
+(defn odd? (n) (= 1 (mod n 2)))
+
+
+; Control flow
+; TODO: add cond here
 
 (defmacro unless (condition yes no)
   `(if (not ~condition) ~yes ~no))
+
+
+; Higher order stuff
 
 (defn reduce (f acc list)
       (unless (empty? list)
@@ -61,6 +78,8 @@
                                         acc))
                                   ()
                                   list)))
+
+; Macros
 
 (defn macroexpand (form)
       (macroexpand-helper (macroexpand-1 form) form))

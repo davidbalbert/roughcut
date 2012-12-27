@@ -135,7 +135,7 @@ class Lisp
       end,
 
       :load => lambda do |filename|
-        eval(parse(File.read(File.expand_path(filename)).gsub("\n", "")))
+        eval(parse(File.read(File.expand_path(filename))))
         true
       end,
 
@@ -177,7 +177,8 @@ class Lisp
   end
 
   def lex(input)
-    input = input.gsub("(", " ( ").gsub(")", " ) ").strip
+    # add space around parens and remove comments that start with a semicolon
+    input = input.gsub("(", " ( ").gsub(")", " ) ").gsub(/;.*?$/, "").strip
     tokens = []
     until input.empty?
       input = input.lstrip
