@@ -172,6 +172,8 @@ class Lisp
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
         #STDERR.puts(e.backtrace)
+      rescue SyntaxError => e
+        STDERR.puts("#{e.class}: #{e.message}")
       end
     end
   end
@@ -301,16 +303,12 @@ class Lisp
 
   def expect(type, tokens)
     t = tokens.shift
-    raise "Expecting #{type}, got a '#{t}'" unless t == type
+    raise SyntaxError, "Expecting #{type}, got a '#{t}'" unless t == type
     t
   end
 
-  def expect_more(tokens)
-    raise "Expecting more input but reached end" if tokens.empty?
-  end
-
   def expect_done(tokens)
-    raise "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
+    raise SyntaxError, "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
   end
 
   def process_unquotes(sexp, env)
