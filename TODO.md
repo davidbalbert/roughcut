@@ -1,5 +1,3 @@
-- add range literals
-  Use this for `rest`
 - Can quasiquote be written in lisp?
 - add nice lisp backtraces
 - make quote and quasiquote print better

@@ -33,7 +33,7 @@
 
 (defn first (list) (send list :[] 0))
 (defn rest (list)
-      (or (send list :[] (send Range :new 1 -1))
+      (or (send list :[] 1..-1)
           ()))
 
 (defn list (& args) args)

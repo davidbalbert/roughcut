@@ -219,6 +219,12 @@ class Lisp
 
       if md = /\A(['`~()])/.match(input)
         tokens << Id.new(md[1].to_sym)
+      elsif md = /\A((-?\d+)(\.\.\.?)(-?\d+))/.match(input)
+        tokens << if md[3].length == 2
+          (md[2].to_i)..(md[4].to_i)
+        else
+          (md[2].to_i)...(md[4].to_i)
+        end
       elsif md = /\A(-?\d+)/.match(input)
         tokens << md[1].to_i
       elsif md = /\A("(.*?)")/.match(input)
