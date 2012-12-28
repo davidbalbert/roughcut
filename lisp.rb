@@ -225,6 +225,8 @@ class Lisp
         else
           (md[2].to_i)...(md[4].to_i)
         end
+      elsif md = /\A(-?\d+\.\d+)/.match(input)
+        tokens << md[1].to_f
       elsif md = /\A(-?\d+)/.match(input)
         tokens << md[1].to_i
       elsif md = /\A("(.*?)")/.match(input)
