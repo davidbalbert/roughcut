@@ -229,7 +229,13 @@ class Lisp
         tokens << md[1].to_f
       elsif md = /\A(-?\d+)/.match(input)
         tokens << md[1].to_i
+      elsif md = /\A(\/(\/|\S.*?\/)[a-z]*)/.match(input)
+        # Regexp syntax. Due to limitations with our lexer, the first character
+        # of the body must not be whitespace
+        tokens << BasicObject.new.instance_eval(md[1])
       elsif md = /\A(%r\{.*?\}[a-z]*)/.match(input)
+        # alternative regexp syntax: %r{body}options
+        # works even with a leading space
         tokens << BasicObject.new.instance_eval(md[1])
       elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
