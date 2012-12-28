@@ -211,7 +211,7 @@ class Lisp
   end
 
   def lex(input)
-    # add space around parens and remove comments that start with a semicolon
+    # remove comments
     input = input.gsub(/;.*?$/, "").strip
     tokens = []
     until input.empty?
@@ -254,7 +254,9 @@ class Lisp
     if sexp.is_a?(Sexp) && sexp.empty?
       sexp # () should return the empty list
     elsif sexp.is_a?(Sexp)
-      case sexp[0].to_sym
+      func = sexp[0].respond_to?(:to_sym) ? sexp[0].to_sym : sexp[0]
+
+      case func
       when :quote
         eval(sexp[0], env).call(*sexp[1..-1])
       when :quasiquote
