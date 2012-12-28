@@ -229,6 +229,8 @@ class Lisp
         tokens << md[1].to_f
       elsif md = /\A(-?\d+)/.match(input)
         tokens << md[1].to_i
+      elsif md = /\A(%r\{.*?\}[a-z]*)/.match(input)
+        tokens << BasicObject.new.instance_eval(md[1])
       elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
       elsif md = /\A(nil)/.match(input)
