@@ -219,31 +219,24 @@ class Lisp
 
       if md = /\A(['`~()])/.match(input)
         tokens << Id.new(md[1].to_sym)
-        input = input[md[1].length..-1]
       elsif md = /\A(-?\d+)/.match(input)
         tokens << md[1].to_i
-        input = input[md[1].length..-1]
       elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
-        input = input[md[1].length..-1]
       elsif md = /\A(nil)/.match(input)
         tokens << nil
-        input = input[md[1].length..-1]
       elsif md = /\A(true)/.match(input)
         tokens << true
-        input = input[md[1].length..-1]
       elsif md = /\A(false)/.match(input)
         tokens << false
-        input = input[md[1].length..-1]
       elsif md = /\A((::)?[^\s()"'`~:]+(::[^\s()"'`~:]+)*)/.match(input)
         tokens << Id.new(md[1].to_sym)
-        input = input[md[1].length..-1]
       elsif md =/\A(:([^\s()"'`~:]*))/.match(input)
         tokens << md[2].to_sym
-        input = input[md[1].length..-1]
       else
         raise SyntaxError, "Error at input: #{input}"
       end
+      input = input[md[1].length..-1]
 
     end
 
