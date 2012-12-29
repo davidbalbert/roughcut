@@ -25,6 +25,16 @@
                      expressions))
           (filter-by-index odd? bindings)))
 
+(defmacro let* (bindings & expressions)
+  (if (= 2 (size bindings))
+    `(~(concat `(fn (~(first bindings)))
+               expressions)
+       ~(first (rest bindings)))
+    `((fn (~(first bindings))
+          ~(concat `(let* ~(rest (rest bindings)))
+                   expressions))
+      ~(first (rest bindings)))))
+
 (defmacro do (& expressions)
   (concat '(let ()) expressions))
 
@@ -39,6 +49,8 @@
 (defn list (& args) args)
 (defn list? (obj) (send obj :is_a? (send Sexp)))
 (defn empty? (list) (= list ()))
+(defn size (list) (send list :size))
+(defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
 
 (defn eval (list) (send self :eval list))
 

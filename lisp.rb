@@ -170,7 +170,7 @@ class Lisp
         true
       end,
 
-      :if => lambda do |env, condition, yes, no|
+      :if => lambda do |env, condition, yes, no=nil|
         if condition
           eval(yes, env)
         else
