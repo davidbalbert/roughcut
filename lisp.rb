@@ -430,8 +430,16 @@ class Lisp
     end
   end
 
+  def exists_in_env?(name)
+    name = name.to_sym if name.respond_to?(:to_sym)
+    @env.has_key?(name)
+  end
+
   def macroexpand_1(sexp)
-    if sexp.is_a?(Sexp) && (macro = eval(sexp[0])).is_a?(Macro)
+    if (sexp.is_a?(Sexp) &&
+        exists_in_env?(sexp[0]) &&
+        (macro = eval(sexp[0])).is_a?(Macro))
+
       macro.call(*sexp[1..-1])
     else
       sexp

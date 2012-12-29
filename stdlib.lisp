@@ -136,5 +136,5 @@
 
 (defn macroexpand-all (form)
       (if (list? (macroexpand form))
-        (map macroexpand (macroexpand form))
+        (map macroexpand-all (macroexpand form))
         form))
