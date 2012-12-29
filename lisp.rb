@@ -1,3 +1,4 @@
+require 'readline'
 require 'pp'
 
 class Lisp
@@ -183,9 +184,7 @@ class Lisp
 
   def repl
     loop do
-      print "lisp.rb> "
-
-      input = gets.chomp
+      input = Readline.readline("lisp.rb> ", true)
       next if input.empty?
       break if input == " "
 
