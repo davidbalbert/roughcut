@@ -2,6 +2,8 @@ require 'readline'
 require 'pp'
 
 class Lisp
+  HISTORY_FILE = File.expand_path("~/.lisprb_history")
+
   class Id
     def initialize(sym)
       @sym = sym
@@ -183,12 +185,24 @@ class Lisp
   end
 
   def repl
+    @old_history = Readline::HISTORY.to_a
+    clear_history!
+
+    if File.exists?(HISTORY_FILE)
+      history = File.read(HISTORY_FILE).split("\n")
+      load_history(history)
+    end
+
     loop do
-      input = Readline.readline("lisp.rb> ", true)
+      input = Readline.readline("lisp.rb> ")
       next if input.empty?
       break if input == " "
 
       begin
+        if Readline::HISTORY.size == 0 || Readline::HISTORY[-1] != input
+          Readline::HISTORY << input
+        end
+
         out = eval(parse(input))
         @env[:_] = out
 
@@ -207,6 +221,13 @@ class Lisp
         STDERR.puts("#{e.class}: #{e.message}")
       end
     end
+  ensure
+    File.open(HISTORY_FILE, "w") do |f|
+      f.write(Readline::HISTORY.to_a.join("\n") + "\n")
+    end
+
+    clear_history!
+    load_history(@old_history)
   end
 
   def lex(input)
@@ -414,6 +435,16 @@ class Lisp
       macro.call(*sexp[1..-1])
     else
       sexp
+    end
+  end
+
+  def clear_history!
+    Readline::HISTORY.shift until Readline::HISTORY.empty?
+  end
+
+  def load_history(history)
+    history.each do |line|
+      Readline::HISTORY << line
     end
   end
 end
