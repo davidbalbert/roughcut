@@ -1,3 +1,8 @@
+- macroexpand-all seems to be broken
+
+lisp.rb> (macroexpand-all '(let (a 1) (let (b (+ a 1)) (+ a b))))
+=> ((fn (a) (let (b (+ a 1)) (+ a b))) 1)
+
 - Can quasiquote be written in lisp?
 - add nice lisp backtraces
 - make quote and quasiquote print better
