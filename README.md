@@ -81,6 +81,13 @@ roughcut> a
 NameError: a is undefined
 ```
 
+It also supports loading source files with the `load` function:
+
+```lisp
+roughcut> (load "foobar.lisp")
+=> true
+```
+
 ## Transparency
 
 As much as possible, the string representations of objects in Roughcut are eval-able. This is similar to Python's idea of `repr`.
