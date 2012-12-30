@@ -161,7 +161,6 @@ class Roughcut
       end,
 
       :quasiquote => lambda { |env, list| process_unquotes(list, env) },
-      :"macroexpand-1" => lambda { |sexp| macroexpand_1(sexp) },
       :apply => lambda { |f, *args, arg_list| f.call(*(args + arg_list)) },
 
       :def => lambda do |env, name, val|

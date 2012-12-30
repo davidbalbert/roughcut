@@ -147,6 +147,9 @@
 
 ; Macros
 
+(defn macroexpand-1 (form)
+      (send self :macroexpand_1 form))
+
 (defn macroexpand (form)
       (macroexpand-helper (macroexpand-1 form) form))
 
