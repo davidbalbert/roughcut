@@ -46,6 +46,14 @@
 (defn eval (list) (send self :eval list))
 (defn quote (list) list)
 
+; Introspection
+
+(defn type (o) (send o :class))
+
+; Strings
+
+(defn match (str pattern) (send str :match pattern))
+
 ; Mathy stuff
 
 (defn + (& args) (send args :reduce :+))
