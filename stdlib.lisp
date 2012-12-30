@@ -79,8 +79,8 @@
 
 ; Control flow
 
-(defmacro unless (condition yes no)
-  `(if (not ~condition) ~yes ~no))
+(defmacro unless (condition & branches)
+  `(if (not ~condition) ~@branches))
 
 (defmacro cond (& clauses)
   (if (= 0 (size clauses))
