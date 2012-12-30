@@ -32,8 +32,8 @@
       (or (send list :[] 1..-1)
           ()))
 
-(def concat (fn (& lists) (send lists :flatten 1)))
-(def cons (fn (val list) (concat `(~val) list)))
+(defn concat (& lists) (send lists :flatten 1))
+(defn cons (val list) `(~val ~@list))
 
 (defn list (& args) args)
 (defn list? (obj) (send obj :is_a? (send Sexp)))
