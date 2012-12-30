@@ -107,6 +107,8 @@ class Lisp
   attr_reader :env
 
   def initialize
+    @stack = []
+
     @env = {
       :p => lambda do |*args|
         out = args.map do |a|
@@ -226,9 +228,11 @@ class Lisp
         end
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
+        puts backtrace
         #STDERR.puts(e.backtrace)
       rescue SyntaxError => e
         STDERR.puts("#{e.class}: #{e.message}")
+        puts backtrace
       end
     end
   ensure
@@ -297,7 +301,9 @@ class Lisp
     elsif sexp.is_a?(Sexp)
       func = sexp[0].respond_to?(:to_sym) ? sexp[0].to_sym : sexp[0]
 
-      case func
+      @stack.unshift(func)
+
+      result = case func
       when :quote
         eval(sexp[0], env).call(*sexp[1..-1])
       when :quasiquote
@@ -328,6 +334,10 @@ class Lisp
           f.call(*sexp[1..-1].map { |o| eval(o, env) })
         end
       end
+
+      @stack.shift
+
+      result
     elsif sexp.is_a?(Array) # Top level
       sexp.map { |s| eval(s, env) }.last
     elsif sexp.is_a?(Id)
@@ -495,6 +505,10 @@ class Lisp
     history.each do |line|
       Readline::HISTORY << line
     end
+  end
+
+  def backtrace
+    @stack.map { |func| "\tin '#{func}'" }.join("\n")
   end
 end
 

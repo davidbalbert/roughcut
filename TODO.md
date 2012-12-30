@@ -1,5 +1,3 @@
-- add nice lisp backtraces
-  Make them work with lisp functions that call ruby methods
 - fix arg counts functions defined in ruby that take an implicit env
 - ``~foo should return the id foo, not eval foo. Only ``~~foo should eval foo
 
