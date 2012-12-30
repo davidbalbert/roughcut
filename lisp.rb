@@ -213,8 +213,6 @@ class Lisp
       end
     }
 
-    @env[:env] = @env
-
     @env[:load].call("stdlib.lisp")
   end
 
@@ -226,6 +224,8 @@ class Lisp
       history = File.read(HISTORY_FILE).split("\n")
       load_history(history)
     end
+
+    @env[:env] = @env
 
     loop do
       input = Readline.readline("lisp.rb> ")
