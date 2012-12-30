@@ -78,7 +78,6 @@
     `(if ~condition (and ~@args) false)))
 
 ; Control flow
-; TODO: add cond here
 
 (defmacro unless (condition yes no)
   `(if (not ~condition) ~yes ~no))
