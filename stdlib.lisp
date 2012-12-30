@@ -44,7 +44,7 @@
 (defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
 
 (defn eval (list) (send self :eval list))
-(def quote (fn (list) list))
+(defn quote (list) list)
 
 ; Mathy stuff
 
