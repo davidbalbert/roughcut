@@ -29,16 +29,26 @@ class Lisp
 
   class Sexp < Array
     def to_s
-      "(#{reduce("") do |out, o|
-        if o.is_a?(String)
-          o = "\"#{o}\""
-        elsif o.is_a?(Symbol)
-          o = o.inspect
-        elsif o.nil?
-          o = "nil"
-        end
-        out << o.to_s + " "
-      end.strip})"
+      if first.is_a?(Id) && first == :quote
+        "'#{self[1].to_s}"
+      elsif first.is_a?(Id) && first == :quasiquote
+        "`#{self[1].to_s}"
+      elsif first.is_a?(Id) && first == :unquote
+        "~#{self[1].to_s}"
+      elsif first.is_a?(Id) && first == :"unquote-splicing"
+        "~@#{self[1].to_s}"
+      else
+        "(#{reduce("") do |out, o|
+          if o.is_a?(String)
+            o = "\"#{o}\""
+          elsif o.is_a?(Symbol)
+            o = o.inspect
+          elsif o.nil?
+            o = "nil"
+          end
+          out << o.to_s + " "
+        end.strip})"
+      end
     end
 
     def inspect
