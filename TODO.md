@@ -1,3 +1,4 @@
+- Add argument destructuring
 - Make parser wait for more input if you haven't closed enough parens. It shouldn't throw an error.
 - add line number information to function definitions and backtraces
 - fix arg counts functions defined in ruby that take an implicit env
