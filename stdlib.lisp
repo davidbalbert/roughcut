@@ -67,12 +67,13 @@
 
 (defmacro or (condition & args)
   (if (empty? args)
-    `(if ~condition
-       ~condition
-       false)
-    `(if ~condition
-       ~condition
-       (or ~@args))))
+    `(if ~condition ~condition false)
+    `(if ~condition ~condition (or ~@args))))
+
+(defmacro and (condition & args)
+  (if (empty? args)
+    `(if ~condition ~condition false)
+    `(if ~condition (and ~@args) false)))
 
 ; Control flow
 ; TODO: add cond here
