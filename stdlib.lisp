@@ -27,10 +27,12 @@
 
 ; List manipulation
 
-(defn first (list) (send list :[] 0))
 (defn rest (list)
       (or (send list :[] 1..-1)
           ()))
+
+(defn first (list) (send list :[] 0))
+(defn second (list) (first (rest list)))
 
 (defn concat (& lists) (send lists :flatten 1))
 (defn cons (val list) `(~val ~@list))
@@ -81,6 +83,14 @@
 (defmacro unless (condition yes no)
   `(if (not ~condition) ~yes ~no))
 
+(defmacro cond (& clauses)
+  (if (= 0 (size clauses))
+    nil
+    (if (= (first clauses) :else)
+      (second clauses)
+      `(if ~(first clauses)
+         ~(second clauses)
+         (cond ~@(rest (rest clauses)))))))
 
 ; Higher order stuff
 
@@ -140,4 +150,4 @@
 (defn macroexpand-all (form)
       (if (list? (macroexpand form))
         (map macroexpand-all (macroexpand form))
-        form))
+        (macroexpand form)))
