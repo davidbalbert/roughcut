@@ -237,7 +237,9 @@ class Lisp
     until input.empty?
       input = input.lstrip
 
-      if md = /\A(['`~()])/.match(input)
+      if md = /\A(~@)/.match(input)
+        tokens << Id.new(md[1].to_sym)
+      elsif md = /\A(['`~()])/.match(input)
         tokens << Id.new(md[1].to_sym)
       elsif md = /\A((-?\d+)(\.\.\.?)(-?\d+))/.match(input)
         tokens << if md[3].length == 2
@@ -360,6 +362,9 @@ class Lisp
     elsif tokens.first == :~
       tokens.shift
       Sexp.new([Id.new(:unquote), parse_val(tokens)])
+    elsif tokens.first == :"~@"
+      tokens.shift
+      Sexp.new([Id.new(:"unquote-splicing"), parse_val(tokens)])
     elsif tokens.first == :"("
       parse_sexp(tokens)
     else
@@ -387,13 +392,37 @@ class Lisp
     raise SyntaxError, "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
   end
 
-  def process_unquotes(sexp, env)
+  def process_unquotes(sexp, env, inside=false)
     if sexp.is_a?(Sexp)
       if sexp.first == :unquote
         eval(*sexp[1..-1], env)
+      elsif sexp.first == :"unquote-splicing"
+        unless inside
+          raise SyntaxError, "You must splice into a list"
+        end
+
+        Sexp.new([sexp[0], *eval(*sexp[1..-1], env)])
       else
-        Sexp.new(sexp.map { |el| process_unquotes(el, env) })
+        sexp = Sexp.new(sexp.map { |el| process_unquotes(el, env, true) })
+        splice(sexp)
       end
+    else
+      sexp
+    end
+  end
+
+  def splice(sexp)
+    if sexp.is_a?(Sexp)
+      spliced = Sexp.new
+      sexp.each do |o|
+        if o.is_a?(Sexp) && o[0] == :"unquote-splicing"
+          spliced.concat(o[1..-1])
+        else
+          spliced << o
+        end
+      end
+
+      spliced
     else
       sexp
     end
