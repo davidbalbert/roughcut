@@ -1,43 +1,29 @@
 (def VERSION "0.0.0")
 
-; We'll start with quote
-
-(def quote (fn (list) list))
-
-; Then defmacro
+; We'll start with defmacro
 
 (def defmacro (macro (name args body)
                      `(def ~name (macro ~args ~body))))
 
-; Defn needs cons, which we'll implement in terms of concat
-
-(def concat (fn (& lists) (send lists :flatten 1)))
-(def cons (fn (val list) (concat `(~val) list)))
-
-; And finally defn! We're up and running
+; And now we'll use that to make defn!
 
 (defmacro defn (name args & expressions)
-  `(def ~name ~(cons 'fn (cons args expressions))))
-
+  `(def ~name (fn ~args ~@expressions)))
 
 (defmacro let (bindings & expressions)
-  (concat `(~(concat `(fn ~(filter-by-index even? bindings))
-                     expressions))
-          (filter-by-index odd? bindings)))
+  `((fn ~(filter-by-index even? bindings)
+       ~@expressions) ~@(filter-by-index odd? bindings)))
 
 (defmacro let* (bindings & expressions)
-  (if (= 2 (size bindings))
-    `(~(concat `(fn (~(first bindings)))
-               expressions)
-       ~(first (rest bindings)))
+  (if (>= 2 (size bindings))
+    `(let ~bindings ~@expressions)
+
     `((fn (~(first bindings))
-          ~(concat `(let* ~(rest (rest bindings)))
-                   expressions))
+          (let* ~(rest (rest bindings)) ~@expressions))
       ~(first (rest bindings)))))
 
 (defmacro do (& expressions)
-  (concat '(let ()) expressions))
-
+  `(let () ~@expressions))
 
 ; List manipulation
 
@@ -46,6 +32,9 @@
       (or (send list :[] 1..-1)
           ()))
 
+(def concat (fn (& lists) (send lists :flatten 1)))
+(def cons (fn (val list) (concat `(~val) list)))
+
 (defn list (& args) args)
 (defn list? (obj) (send obj :is_a? (send Sexp)))
 (defn empty? (list) (= list ()))
@@ -53,6 +42,7 @@
 (defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
 
 (defn eval (list) (send self :eval list))
+(def quote (fn (list) list))
 
 ; Mathy stuff
 
@@ -82,7 +72,7 @@
        false)
     `(if ~condition
        ~condition
-       ~(concat '(or) args))))
+       (or ~@args))))
 
 ; Control flow
 ; TODO: add cond here
