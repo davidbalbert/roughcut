@@ -27,6 +27,26 @@ class Lisp
     end
   end
 
+  class LispRange
+    def initialize(start, stop, exclusive=false)
+      @start = start
+      @stop = stop
+      @exclusive = exclusive
+    end
+
+    def to_range(lisp, env)
+      Range.new(lisp.eval(@start, env), lisp.eval(@stop, env), @exclusive)
+    end
+
+    def to_s
+      if @exclusive
+        "#{@start}...#{@stop}"
+      else
+        "#{@start}..#{@stop}"
+      end
+    end
+  end
+
   class Sexp < Array
     def to_s
       if first.is_a?(Id) && first == :quote
@@ -229,10 +249,12 @@ class Lisp
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
         puts backtrace
+        clear_stack!
         #STDERR.puts(e.backtrace)
       rescue SyntaxError => e
         STDERR.puts("#{e.class}: #{e.message}")
         puts backtrace
+        clear_stack!
       end
     end
   ensure
@@ -255,11 +277,14 @@ class Lisp
         tokens << Id.new(md[1].to_sym)
       elsif md = /\A(['`~()])/.match(input)
         tokens << Id.new(md[1].to_sym)
-      elsif md = /\A((-?\d+)(\.\.\.?)(-?\d+))/.match(input)
+      elsif md = /\A(([^\s()"'`~:]+|-?\d+)(\.\.\.?)([^\s()"'`~:]+|-?\d+))/.match(input)
+        first = md[2].to_i.to_s == md[2] ? md[2].to_i : Id.new(md[2].to_sym)
+        last = md[4].to_i.to_s == md[4] ? md[4].to_i : Id.new(md[4].to_sym)
+
         tokens << if md[3].length == 2
-          (md[2].to_i)..(md[4].to_i)
+          LispRange.new(first, last, false)
         else
-          (md[2].to_i)...(md[4].to_i)
+          LispRange.new(first, last, true)
         end
       elsif md = /\A(-?\d+\.\d+)/.match(input)
         tokens << md[1].to_f
@@ -323,6 +348,8 @@ class Lisp
           receiver = env[receiver.to_sym]
         elsif receiver.is_a?(Id)
           receiver = super(receiver)
+        elsif receiver.is_a?(Sexp) || receiver.is_a?(LispRange)
+          receiver = eval(receiver, env)
         end
 
         eval(sexp[0], env).call(receiver, *sexp[2..-1].map { |o| eval(o, env) })
@@ -346,6 +373,8 @@ class Lisp
       else
         raise NameError, "#{sexp} is undefined"
       end
+    elsif sexp.is_a?(LispRange)
+      sexp.to_range(self, env)
     else
       sexp
     end
@@ -509,6 +538,10 @@ class Lisp
 
   def backtrace
     @stack.map { |func| "\tin '#{func}'" }.join("\n")
+  end
+
+  def clear_stack!
+    @stack = []
   end
 end
 
