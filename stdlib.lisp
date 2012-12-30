@@ -12,7 +12,7 @@
 
 (defmacro let (bindings & expressions)
   `((fn ~(filter-by-index even? bindings)
-       ~@expressions) ~@(filter-by-index odd? bindings)))
+        ~@expressions) ~@(filter-by-index odd? bindings)))
 
 (defmacro let* (bindings & expressions)
   (if (>= 2 (size bindings))
@@ -56,7 +56,6 @@
 
 (defn even? (n) (= 0 (mod n 2)))
 (defn odd? (n) (= 1 (mod n 2)))
-
 
 ; Boolean logic
 
