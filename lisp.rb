@@ -27,7 +27,7 @@ class Lisp
     end
   end
 
-  class LispRange
+  class LazyRange
     def initialize(start, stop, exclusive=false)
       @start = start
       @stop = stop
@@ -282,9 +282,9 @@ class Lisp
         last = md[4].to_i.to_s == md[4] ? md[4].to_i : Id.new(md[4].to_sym)
 
         tokens << if md[3].length == 2
-          LispRange.new(first, last, false)
+          LazyRange.new(first, last, false)
         else
-          LispRange.new(first, last, true)
+          LazyRange.new(first, last, true)
         end
       elsif md = /\A(-?\d+\.\d+)/.match(input)
         tokens << md[1].to_f
@@ -348,7 +348,7 @@ class Lisp
           receiver = env[receiver.to_sym]
         elsif receiver.is_a?(Id)
           receiver = super(receiver)
-        elsif receiver.is_a?(Sexp) || receiver.is_a?(LispRange)
+        elsif receiver.is_a?(Sexp) || receiver.is_a?(LazyRange)
           receiver = eval(receiver, env)
         end
 
@@ -373,7 +373,7 @@ class Lisp
       else
         raise NameError, "#{sexp} is undefined"
       end
-    elsif sexp.is_a?(LispRange)
+    elsif sexp.is_a?(LazyRange)
       sexp.to_range(self, env)
     else
       sexp
