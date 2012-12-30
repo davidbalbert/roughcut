@@ -90,6 +90,8 @@
          ~(second clauses)
          (cond ~@(rest (rest clauses)))))))
 
+(defn exit () (send self :raise (send Exit)))
+
 ; Higher order stuff
 
 (defn reduce (f acc list)

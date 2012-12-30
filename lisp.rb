@@ -4,6 +4,8 @@ require 'pp'
 class Lisp
   HISTORY_FILE = File.expand_path("~/.lisprb_history")
 
+  class Exit < StandardError; end
+
   class Id
     def initialize(sym)
       @sym = sym
@@ -246,6 +248,8 @@ class Lisp
         else
           pp out
         end
+      rescue Exit
+        break
       rescue StandardError => e
         STDERR.puts("#{e.class}: #{e.message}")
         puts backtrace
