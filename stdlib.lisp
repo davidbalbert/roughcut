@@ -20,7 +20,7 @@
 
     `((fn (~(first bindings))
           (let* ~(rest (rest bindings)) ~@expressions))
-      ~(first (rest bindings)))))
+      ~(second bindings))))
 
 (defmacro do (& expressions)
   `(let () ~@expressions))
