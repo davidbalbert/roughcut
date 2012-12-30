@@ -358,7 +358,13 @@ class Lisp
       Sexp.new([Id.new(:quote), parse_val(tokens)])
     elsif tokens.first == :`
       tokens.shift
-      Sexp.new([Id.new(:quasiquote), parse_val(tokens)])
+      sexp = Sexp.new([Id.new(:quasiquote), parse_val(tokens)])
+
+      if sexp[1].is_a?(Sexp) && sexp[1][0] == :"unquote-splicing"
+        raise SyntaxError, "You cannot use unquote-splicing outside of a list"
+      end
+
+      sexp
     elsif tokens.first == :~
       tokens.shift
       Sexp.new([Id.new(:unquote), parse_val(tokens)])
@@ -392,18 +398,14 @@ class Lisp
     raise SyntaxError, "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
   end
 
-  def process_unquotes(sexp, env, inside=false)
+  def process_unquotes(sexp, env)
     if sexp.is_a?(Sexp)
       if sexp.first == :unquote
         eval(*sexp[1..-1], env)
       elsif sexp.first == :"unquote-splicing"
-        unless inside
-          raise SyntaxError, "You must splice into a list"
-        end
-
         Sexp.new([sexp[0], *eval(*sexp[1..-1], env)])
       else
-        sexp = Sexp.new(sexp.map { |el| process_unquotes(el, env, true) })
+        sexp = Sexp.new(sexp.map { |el| process_unquotes(el, env) })
         splice(sexp)
       end
     else
