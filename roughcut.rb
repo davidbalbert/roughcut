@@ -1,8 +1,8 @@
 require 'readline'
 require 'pp'
 
-class Lisp
-  HISTORY_FILE = File.expand_path("~/.lisprb_history")
+class Roughcut
+  HISTORY_FILE = File.expand_path("~/.roughcut_history")
 
   class Exit < StandardError; end
 
@@ -36,8 +36,8 @@ class Lisp
       @exclusive = exclusive
     end
 
-    def to_range(lisp, env)
-      Range.new(lisp.eval(@start, env), lisp.eval(@stop, env), @exclusive)
+    def to_range(roughcut, env)
+      Range.new(roughcut.eval(@start, env), roughcut.eval(@stop, env), @exclusive)
     end
 
     def to_s
@@ -228,9 +228,9 @@ class Lisp
     @env[:env] = @env
 
     loop do
-      input = Readline.readline("lisp.rb> ")
+      input = Readline.readline("roughcut> ")
+      break if input.nil? || input == " "
       next if input.empty?
-      break if input == " "
 
       begin
         if Readline::HISTORY.size == 0 || Readline::HISTORY[-1] != input
@@ -549,4 +549,4 @@ class Lisp
   end
 end
 
-Lisp.new.repl
+Roughcut.new.repl
