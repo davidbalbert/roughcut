@@ -229,7 +229,7 @@ class Roughcut
     loop do
       input = Readline.readline("roughcut> ")
       break if input.nil? || input == " "
-      next if input.empty?
+      next if input.gsub(/;.*?$/, "").strip.empty?
 
       begin
         if Readline::HISTORY.size == 0 || Readline::HISTORY[-1] != input
