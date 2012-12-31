@@ -16,7 +16,7 @@ Roughcut has three major design goals:
 
 ## Overview
 
-Roughcut works like Common Lisp, is implemented like Scheme, and looks like Clojure. From Common Lisp it takes the macro system, as opposed to Scheme's `define-syntax`. From Scheme it takes a very small set of fundamental forms and a single namespace for functions and variables (in other words, Roughcut is a Lisp-1, not a Lisp-2). From Clojure, Roughcut takes names (`def`, `defn`, `defmacro`, `first`, `second`, `rest`), syntax (`unquote` and `unquote-splicing` are written with tildes instead of commas: `~`, `~@`) and ideas about interacting with an underlying language runtime.
+Roughcut works like Common Lisp, is implemented like Scheme, and looks like Clojure. From Common Lisp it takes the macro system. From Scheme it takes a very small set of fundamental forms and a single namespace for functions and variables. From Clojure, Roughcut takes names (`def`, `defn`, `defmacro`, `first`, `second`, `rest`), syntax (`unquote` and `unquote-splicing` are written with tildes instead of commas: `~`, `~@`) and ideas about interacting with an underlying language runtime.
 
 ### Examples
 
