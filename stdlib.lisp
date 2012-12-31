@@ -34,7 +34,7 @@
 (defn first (list) (send list :[] 0))
 (defn second (list) (first (rest list)))
 
-(defn concat (& lists) (send lists :flatten 1))
+(defn concat (& lists) (apply list (send (send lists :compact) :flatten 1)))
 (defn cons (val list) `(~val ~@list))
 
 (defn list (& args) args)
