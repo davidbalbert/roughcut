@@ -342,7 +342,7 @@ roughcut> (type :name)
 => Symbol
 roughcut> (type 1..100)
 => Range
-roughcut> (type /foo/)
+roughcut> (type /foo/i)
 => Regexp
 ```
 
