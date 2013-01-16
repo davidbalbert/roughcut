@@ -63,6 +63,11 @@
 
 (defn match (str pattern) (send str :match pattern))
 
+; Hashes
+
+(defn keys (hash) (list (send hash :keys)))
+(defn values (hash) (list (send hash :values)))
+
 ; Mathy stuff
 
 (defn + (& args) (send args :reduce :+))
