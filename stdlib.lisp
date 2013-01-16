@@ -46,6 +46,15 @@
 (defn eval (list) (send self :eval list))
 (defn quote (list) list)
 
+(defn choose (list k)
+      (cond (= k 0) '(())
+            (> k (size list)) ()
+            :else (concat
+                    (map (fn (combo) (cons (first list) combo))
+                         (choose (rest list) (- k 1)))
+                    (choose (rest list) k))))
+
+
 ; Introspection
 
 (defn type (o) (send o :class))
