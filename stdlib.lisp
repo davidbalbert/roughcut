@@ -65,8 +65,8 @@
 
 ; Hashes
 
-(defn keys (hash) (list (send hash :keys)))
-(defn values (hash) (list (send hash :values)))
+(defn keys (hash) (send hash :keys))
+(defn values (hash) (send hash :values))
 
 ; Mathy stuff
 
