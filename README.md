@@ -260,6 +260,8 @@ roughcut> (macroexpand-all '(or foo bar baz))
 => (if foo foo (if bar bar (if baz baz false)))
 ```
 
+Roughcut macros are evaluated at runtime, not compile time. I think it would be better for performance if they were evaluated at compile time, but runtime macros were easier to write.
+
 ## Read-eval-print loop
 
 Roughcut has a nice little REPL, if I do say so myself. It uses Readline to provide line editing, navigation, command history, and history lookup. It saves history between invocations in `~/.roughcut_history`. Roughcut preserves whatever history existed before its REPL started and restores it after it ends. This means that Roughcut plays nice from within IRB or Pry:
