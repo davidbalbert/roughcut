@@ -126,12 +126,50 @@ class Roughcut
     end
   end
 
+  class Env
+    def initialize(*envs)
+      @envs = envs
+
+      if @envs.empty?
+        @envs[0] = {}
+      end
+    end
+
+    def merge(other)
+      Env.new(other, *@envs)
+    end
+
+    def [](key)
+      @envs.each do |e|
+        return e[key] if e.has_key?(key)
+      end
+
+      nil
+    end
+
+    def []=(key, value)
+      @envs[0][key] = value
+    end
+
+    def has_key?(key)
+      !!@envs.find { |e| e.has_key?(key) }
+    end
+
+    def set!(key, value)
+      e = @envs.find { |e| e.has_key?(key) }
+
+      raise NameError, "Undefined variable '#{key}'" unless e
+
+      e[key] = value
+    end
+  end
+
   attr_reader :env
 
   def initialize
     @stack = []
 
-    @env = {
+    @env = Env.new({
       :p => lambda do |*args|
         out = args.map do |a|
           if a.is_a?(Id)
@@ -174,6 +212,10 @@ class Roughcut
         @env[name.to_sym] = val
       end,
 
+      :set! => lambda do |env, name, val|
+        env.set!(name.to_sym, eval(val, env))
+      end,
+
       :fn => lambda do |env, arg_names, *expressions|
         if expressions.empty?
           raise SyntaxError, "wrong number of arguments (1 for 2)"
@@ -183,8 +225,9 @@ class Roughcut
         Function.new(arg_names, expressions) do |*args|
           check_arg_count(args, min_args, max_args)
 
+          merged_env = env.merge(zip_args(arg_names, args))
           expressions.map do |expr|
-            eval(expr, env.merge(zip_args(arg_names, args)))
+            eval(expr, merged_env)
           end.last
         end
       end,
@@ -211,7 +254,7 @@ class Roughcut
           eval(no, env)
         end
       end
-    }
+    })
 
     @env[:load].call("stdlib.lisp")
   end
@@ -333,15 +376,7 @@ class Roughcut
       @stack.unshift(func)
 
       result = case func
-      when :quote
-        eval(sexp[0], env).call(env, *sexp[1..-1])
-      when :quasiquote
-        eval(sexp[0], env).call(env, *sexp[1..-1])
-      when :def
-        eval(sexp[0], env).call(env, *sexp[1..-1])
-      when :fn
-        eval(sexp[0], env).call(env, *sexp[1..-1])
-      when :macro
+      when :quote, :quasiquote, :def, :set!, :fn, :macro
         eval(sexp[0], env).call(env, *sexp[1..-1])
       when :if
         eval(sexp[0], env).call(env, eval(sexp[1], env), *sexp[2..-1])
