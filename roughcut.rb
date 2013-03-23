@@ -160,6 +160,7 @@ class Roughcut
         end
       end,
 
+      :quote => lambda { |env, list| list },
       :quasiquote => lambda { |env, list| process_unquotes(list, env) },
       :apply => lambda { |f, *args, arg_list| f.call(*(args + arg_list)) },
 
@@ -333,7 +334,7 @@ class Roughcut
 
       result = case func
       when :quote
-        eval(sexp[0], env).call(*sexp[1..-1])
+        eval(sexp[0], env).call(env, *sexp[1..-1])
       when :quasiquote
         eval(sexp[0], env).call(env, *sexp[1..-1])
       when :def

@@ -44,7 +44,6 @@
 (defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
 
 (defn eval (list) (send self :eval list))
-(defn quote (list) list)
 
 (defn choose (list k)
       (cond (= k 0) '(())
