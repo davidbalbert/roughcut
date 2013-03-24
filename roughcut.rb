@@ -347,11 +347,11 @@ class Roughcut
         tokens << BasicObject.new.instance_eval(md[1])
       elsif md = /\A("(.*?)")/.match(input)
         tokens << md[2]
-      elsif md = /\A(nil)/.match(input)
+      elsif md = /\A(nil)[\s)]/.match(input)
         tokens << nil
-      elsif md = /\A(true)/.match(input)
+      elsif md = /\A(true)[\s)]/.match(input)
         tokens << true
-      elsif md = /\A(false)/.match(input)
+      elsif md = /\A(false)[\s)]/.match(input)
         tokens << false
       elsif md = /\A((::)?[^\s()"'`~:]+(::[^\s()"'`~:]+)*)/.match(input)
         tokens << Id.new(md[1].to_sym)
