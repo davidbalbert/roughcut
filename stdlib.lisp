@@ -22,8 +22,22 @@
           (let* ~(rest (rest bindings)) ~@expressions))
       ~(second bindings))))
 
+(defmacro letrec (bindings & expressions)
+  (let* (names (filter-by-index even? bindings)
+         values (filter-by-index odd? bindings)
+         nil-bindings
+           (mapcat (fn (el) (list el nil)) names)
+         binding-pairs
+           (zip2 names values)
+         set!s
+           (map (fn (pair) (cons 'set! pair)) binding-pairs))
+    `(let ~nil-bindings ~@set!s ~@expressions)))
+
+
 (defmacro do (& expressions)
   `(let () ~@expressions))
+
+(defn identity (x) x)
 
 ; List manipulation
 
@@ -34,14 +48,22 @@
 (defn first (list) (send list :[] 0))
 (defn second (list) (first (rest list)))
 
-(defn concat (& lists) (apply list (send (send lists :compact) :flatten 1)))
 (defn cons (val list) `(~val ~@list))
+
+(defn concat (& lists)
+      (apply list (send (send lists :compact) :flatten 1)))
 
 (defn list (& args) args)
 (defn list? (obj) (send obj :is_a? (send Sexp)))
 (defn empty? (list) (= list ()))
 (defn size (list) (send list :size))
 (defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
+
+(defn zip2 (l1 l2)
+      (if (or (empty? l1) (empty? l2))
+        ()
+        (cons (list (first l1) (first l2))
+              (zip2 (rest l1) (rest l2)))))
 
 (defn eval (list) (send self :eval list))
 
@@ -129,6 +151,9 @@
       (reverse (reduce (fn (acc el) (cons (f el) acc))
                        ()
                        list)))
+
+(defn mapcat (f list)
+      (apply concat (map f list)))
 
 (defn filter (pred list)
       (reverse (reduce (fn (acc el)
