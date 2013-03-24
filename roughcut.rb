@@ -393,7 +393,12 @@ class Roughcut
 
         eval(sexp[0], env).call(receiver, *sexp[2..-1].map { |o| eval(o, env) })
       else
+        @stack.shift
+
         f = eval(sexp[0], env)
+
+        @stack.unshift(func)
+
         if f.is_a?(Macro)
           eval(f.call(*sexp[1..-1]), env)
         else
