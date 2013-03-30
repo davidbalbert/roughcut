@@ -589,4 +589,6 @@ class Roughcut
   end
 end
 
-Roughcut.new.repl
+if __FILE__ == $0
+  Roughcut.new.repl
+end
