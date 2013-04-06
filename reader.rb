@@ -6,7 +6,8 @@ class Roughcut
 
   class Reader
     MACROS = {
-      "(" => lambda { |reader| reader.send(:read_list) }
+      "(" => lambda { |reader| reader.send(:read_list) },
+      "\"" => lambda { |reader| reader.send(:read_string) }
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -63,7 +64,7 @@ class Roughcut
           ch = @io.getc
         end
 
-        raise ReadError, "Reader reached EOF" if ch.nil?
+        raise ReadError, "Reader reached EOF, expecting ')'" if ch.nil?
 
         break if ch == ")"
 
@@ -72,6 +73,22 @@ class Roughcut
       end
 
       List.build(*vals)
+    end
+
+    def read_string
+      s = ""
+
+      loop do
+        ch = @io.getc
+
+        raise ReadError, "Reader reached EOF, expecting '\"'" if ch.nil?
+
+        break if ch == "\""
+
+        s << ch
+      end
+
+      s
     end
 
     def read_number
@@ -328,6 +345,14 @@ if __FILE__ == $0
 
       def test_bad_number
         assert_raises(ReadError) { Reader.new("+3a2").read }
+      end
+
+      def test_read_string
+        assert_equal "foo bar", Reader.new('"foo bar"').read
+      end
+
+      def test_read_incomplete_string
+        assert_raises(ReadError) { Reader.new('"foo bar').read }
       end
 
       def test_read_empty_list
