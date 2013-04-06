@@ -9,6 +9,9 @@ class Roughcut
       "(" => lambda { |reader| reader.send(:read_list) }
     }
 
+    FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
+    INT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)\z/
+
     def initialize(input)
       @io = StringIO.new(input)
     end
@@ -23,8 +26,25 @@ class Roughcut
 
         raise ReadError, "Reader reached EOF" if ch.nil?
 
+        if "0123456789".include?(ch)
+          @io.ungetc(ch)
+          return read_number
+        end
+
         if MACROS.has_key?(ch)
           return MACROS[ch].call(self)
+        end
+
+        if "+-".include?(ch)
+          ch2 = @io.getc
+
+          if "0123456789".include?(ch2)
+            @io.ungetc(ch2)
+            @io.ungetc(ch)
+            return read_number
+          end
+
+          @io.ungetc(ch2)
         end
 
         @io.ungetc(ch)
@@ -52,6 +72,32 @@ class Roughcut
       end
 
       List.build(*vals)
+    end
+
+    def read_number
+      s = ""
+
+      loop do
+        ch = @io.getc
+
+        break if ch.nil?
+
+        if is_whitespace?(ch) || is_delimeter?(ch)
+          @io.ungetc(ch)
+          break
+        end
+
+        s << ch
+      end
+
+      case s
+      when FLOAT_REGEXP
+        s.to_f
+      when INT_REGEXP
+        s.to_i
+      else
+        raise ReadError, "`#{s}' is not a valid number"
+      end
     end
 
     def read_token
@@ -252,12 +298,48 @@ if __FILE__ == $0
         assert_equal Sym.intern("foo"), Reader.new("foo bar baz").read
       end
 
+      def test_read_integer
+        assert_equal 123, Reader.new("123").read
+      end
+
+      def test_read_positive_integer
+        assert_equal 123, Reader.new("+123").read
+      end
+
+      def test_read_negative_integer
+        assert_equal -123, Reader.new("-123").read
+      end
+
+      def test_read_float
+        assert_equal 3.14, Reader.new("3.14").read
+      end
+
+      def test_read_exponent
+        assert_equal 1.23e5, Reader.new("1.23e5").read
+      end
+
+      def test_read_exponent_with_pos_and_neg
+        assert_equal -1.23e+5, Reader.new("-1.23e+5").read
+      end
+
+      def test_sym_with_plus_and_minus
+        assert_equal q("+z-+"), Reader.new("+z-+").read
+      end
+
+      def test_bad_number
+        assert_raises(ReadError) { Reader.new("+3a2").read }
+      end
+
       def test_read_empty_list
         assert_equal s(), Reader.new("()").read
       end
 
       def test_read_list
         assert_equal s(q("foo"), q("bar"), q("baz")), Reader.new("(foo bar baz)").read
+      end
+
+      def test_read_list_with_nil
+        assert_equal s(q("foo"), nil, q("bar")), Reader.new("(foo nil bar)").read
       end
 
       def test_nested_list
