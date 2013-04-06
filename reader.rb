@@ -28,7 +28,7 @@ class Roughcut
         end
 
         @io.ungetc(ch)
-        return read_sym
+        return interpret_token(read_token)
       end
     end
 
@@ -54,7 +54,7 @@ class Roughcut
       List.build(*vals)
     end
 
-    def read_sym
+    def read_token
       s = ""
       loop do
         ch = @io.getc
@@ -69,7 +69,20 @@ class Roughcut
         s << ch
       end
 
-      Sym.intern(s)
+      s
+    end
+
+    def interpret_token(token)
+      case token
+      when "nil"
+        nil
+      when "true"
+        true
+      when "false"
+        false
+      else
+        Sym.intern(token)
+      end
     end
 
     def is_whitespace?(ch)
@@ -219,6 +232,18 @@ if __FILE__ == $0
         assert_raises(ReadError) { Reader.new(" \t").read }
       end
 
+      def test_read_nil
+        assert_equal nil, Reader.new("nil").read
+      end
+
+      def test_read_true
+        assert_equal true, Reader.new("true").read
+      end
+
+      def test_read_false
+        assert_equal false, Reader.new("false").read
+      end
+
       def test_read_sym
         assert_equal Sym.intern("foo"), Reader.new("foo").read
       end
@@ -233,6 +258,10 @@ if __FILE__ == $0
 
       def test_read_list
         assert_equal s(q("foo"), q("bar"), q("baz")), Reader.new("(foo bar baz)").read
+      end
+
+      def test_nested_list
+        assert_equal s(q("foo"), s(q("bar"), q("baz"))), Reader.new("(foo (bar baz))").read
       end
     end
   end
