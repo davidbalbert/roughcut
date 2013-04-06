@@ -8,7 +8,8 @@ class Roughcut
     MACROS = {
       "(" => lambda { |reader| reader.send(:read_list) },
       "\"" => lambda { |reader| reader.send(:read_string) },
-      ":" => lambda { |reader| reader.send(:read_symbol) }
+      ":" => lambda { |reader| reader.send(:read_symbol) },
+      "'" => lambda { |reader| reader.send(:read_quote) }
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -120,6 +121,10 @@ class Roughcut
 
     def read_symbol
       read_token.intern
+    end
+
+    def read_quote
+      List.build(Sym.intern("quote"), read)
     end
 
     def read_token
@@ -382,6 +387,18 @@ if __FILE__ == $0
 
       def test_nested_list
         assert_equal s(q("foo"), s(q("bar"), q("baz"))), Reader.new("(foo (bar baz))").read
+      end
+
+      def test_quoted_sym
+        assert_equal s(q("quote"), q("foo")), Reader.new("'foo").read
+      end
+
+      def test_quoted_number
+        assert_equal s(q("quote"), 3.14), Reader.new("'3.14").read
+      end
+
+      def test_quoted_list
+        assert_equal s(q("quote"), s(q("foo"), q("bar"))), Reader.new("'(foo bar)").read
       end
     end
   end
