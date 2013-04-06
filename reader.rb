@@ -7,7 +7,8 @@ class Roughcut
   class Reader
     MACROS = {
       "(" => lambda { |reader| reader.send(:read_list) },
-      "\"" => lambda { |reader| reader.send(:read_string) }
+      "\"" => lambda { |reader| reader.send(:read_string) },
+      ":" => lambda { |reader| reader.send(:read_symbol) }
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -115,6 +116,10 @@ class Roughcut
       else
         raise ReadError, "`#{s}' is not a valid number"
       end
+    end
+
+    def read_symbol
+      read_token.intern
     end
 
     def read_token
@@ -353,6 +358,14 @@ if __FILE__ == $0
 
       def test_read_incomplete_string
         assert_raises(ReadError) { Reader.new('"foo bar').read }
+      end
+
+      def test_read_ruby_symbol
+        assert_equal :foo, Reader.new(":foo").read
+      end
+
+      def test_complicated_ruby_symbol
+        assert_equal :"foo-bar", Reader.new(":foo-bar").read
       end
 
       def test_read_empty_list
