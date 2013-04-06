@@ -33,7 +33,7 @@ class Roughcut
 
     private
     def read_list
-      list = node = List.new(nil)
+      list = node = last_node = List.new(nil)
 
       loop do
         ch = @io.getc
@@ -44,9 +44,13 @@ class Roughcut
 
         raise ReadError, "Reader reached EOF" if ch.nil?
 
-        break if ch == ")"
+        if ch == ")"
+          last_node.rest = nil
+          break
+        end
 
         @io.ungetc(ch)
+        last_node = node
         node.first = read
         node = node.rest = List.new(nil)
       end
@@ -152,7 +156,7 @@ class Roughcut
     end
 
     def to_s
-      "(" + map { |el| el.inspect }.join(" ") + ")"
+      "(" + map { |el| el.to_s }.join(" ") + ")"
     end
 
     def inspect
@@ -166,6 +170,10 @@ if __FILE__ == $0
 
   def q(name)
     Roughcut::Sym.intern(name)
+  end
+
+  def s(*args)
+    Roughcut::List.build(*args)
   end
 
   class Roughcut
@@ -188,8 +196,7 @@ if __FILE__ == $0
 
       def test_read_list
         out = Reader.new("(foo bar baz)").read
-        require 'pry'; binding.pry
-        assert_equal List.build(q("foo"), q("bar"), q("baz")), Reader.new("(foo bar baz)").read
+        assert_equal s(q("foo"), q("bar"), q("baz")), Reader.new("(foo bar baz)").read
       end
     end
   end
