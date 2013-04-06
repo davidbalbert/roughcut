@@ -292,55 +292,55 @@ if __FILE__ == $0
 
   class Roughcut
     class TestReader < MiniTest::Unit::TestCase
-      def test_read_nothing
+      def test_nothing
         assert_raises(ReadError) { Reader.new("").read }
       end
 
-      def test_read_whitespace
+      def test_whitespace
         assert_raises(ReadError) { Reader.new(" \t").read }
       end
 
-      def test_read_nil
+      def test_nil
         assert_equal nil, Reader.new("nil").read
       end
 
-      def test_read_true
+      def test_true
         assert_equal true, Reader.new("true").read
       end
 
-      def test_read_false
+      def test_false
         assert_equal false, Reader.new("false").read
       end
 
-      def test_read_sym
+      def test_sym
         assert_equal Sym.intern("foo"), Reader.new("foo").read
       end
 
-      def test_read_extra_chars
+      def test_extra_chars
         assert_equal Sym.intern("foo"), Reader.new("foo bar baz").read
       end
 
-      def test_read_integer
+      def test_integer
         assert_equal 123, Reader.new("123").read
       end
 
-      def test_read_positive_integer
+      def test_positive_integer
         assert_equal 123, Reader.new("+123").read
       end
 
-      def test_read_negative_integer
+      def test_negative_integer
         assert_equal -123, Reader.new("-123").read
       end
 
-      def test_read_float
+      def test_float
         assert_equal 3.14, Reader.new("3.14").read
       end
 
-      def test_read_exponent
+      def test_exponent
         assert_equal 1.23e5, Reader.new("1.23e5").read
       end
 
-      def test_read_exponent_with_pos_and_neg
+      def test_exponent_with_pos_and_neg
         assert_equal -1.23e+5, Reader.new("-1.23e+5").read
       end
 
@@ -352,15 +352,15 @@ if __FILE__ == $0
         assert_raises(ReadError) { Reader.new("+3a2").read }
       end
 
-      def test_read_string
+      def test_string
         assert_equal "foo bar", Reader.new('"foo bar"').read
       end
 
-      def test_read_incomplete_string
+      def test_incomplete_string
         assert_raises(ReadError) { Reader.new('"foo bar').read }
       end
 
-      def test_read_ruby_symbol
+      def test_ruby_symbol
         assert_equal :foo, Reader.new(":foo").read
       end
 
@@ -368,16 +368,16 @@ if __FILE__ == $0
         assert_equal :"foo-bar", Reader.new(":foo-bar").read
       end
 
-      def test_read_empty_list
+      def test_empty_list
         assert_equal s(), Reader.new("()").read
       end
 
-      def test_read_list
+      def test_list
         assert_equal s(q("foo"), q("bar"), q("baz")), Reader.new("(foo bar baz)").read
       end
 
-      def test_read_list_with_nil
-        assert_equal s(q("foo"), nil, q("bar")), Reader.new("(foo nil bar)").read
+      def test_list_with_nil_and_numbers
+        assert_equal s(q("foo"), nil, 50, 2.34e5, q("bar")), Reader.new("(foo nil 50 2.34e5 bar)").read
       end
 
       def test_nested_list
