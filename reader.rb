@@ -1,4 +1,5 @@
 require 'stringio'
+require 'singleton'
 
 class Roughcut
   class ReadError < StandardError; end
@@ -33,7 +34,7 @@ class Roughcut
 
     private
     def read_list
-      list = node = last_node = List.new(nil)
+      vals = []
 
       loop do
         ch = @io.getc
@@ -44,18 +45,13 @@ class Roughcut
 
         raise ReadError, "Reader reached EOF" if ch.nil?
 
-        if ch == ")"
-          last_node.rest = nil
-          break
-        end
+        break if ch == ")"
 
         @io.ungetc(ch)
-        last_node = node
-        node.first = read
-        node = node.rest = List.new(nil)
+        vals << read
       end
 
-      list
+      List.build(*vals)
     end
 
     def read_sym
@@ -116,19 +112,48 @@ class Roughcut
     end
   end
 
+  class EmptyList
+    include Singleton
+    include Enumerable
+
+    def first
+      nil
+    end
+
+    def rest
+      self
+    end
+
+    def each
+      unless block_given?
+        to_enum
+      end
+
+      self
+    end
+
+    def to_s
+      "()"
+    end
+
+    def inspect
+      "#<Roughcut::EmptyList: ()>"
+    end
+  end
+
   class List
     attr_accessor :first, :rest
     include Enumerable
 
     def self.build(*args)
       if args.empty?
-        nil
+        EmptyList.instance
       else
         List.new(args[0], build(*args[1..-1]))
       end
     end
 
-    def initialize(first, rest=nil)
+    def initialize(first, rest=EmptyList.instance)
       @first = first
       @rest = rest
     end
@@ -146,7 +171,7 @@ class Roughcut
         to_enum
       else
         l = self
-        until l.nil?
+        until l.is_a?(EmptyList)
           yield l.first
           l = l.rest
         end
@@ -156,7 +181,15 @@ class Roughcut
     end
 
     def to_s
-      "(" + map { |el| el.to_s }.join(" ") + ")"
+      elements = map do |e|
+        if e.nil?
+          "nil"
+        else
+          e.to_s
+        end
+      end.join(" ")
+
+      "(#{elements})"
     end
 
     def inspect
@@ -194,8 +227,11 @@ if __FILE__ == $0
         assert_equal Sym.intern("foo"), Reader.new("foo bar baz").read
       end
 
+      def test_read_empty_list
+        assert_equal s(), Reader.new("()").read
+      end
+
       def test_read_list
-        out = Reader.new("(foo bar baz)").read
         assert_equal s(q("foo"), q("bar"), q("baz")), Reader.new("(foo bar baz)").read
       end
     end
