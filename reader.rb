@@ -13,6 +13,7 @@ class Roughcut
       "`" => lambda { |reader| reader.send(:read_quasiquote) },
       "~" => lambda { |reader| reader.send(:read_unquote) },
       ";" => lambda { |reader| reader.send(:read_comment) },
+      "/" => lambda { |reader| reader.send(:read_regexp) }
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -157,6 +158,58 @@ class Roughcut
       end
 
       @io
+    end
+
+    def read_regexp
+      ch = @io.getc
+
+      if is_whitespace?(ch)
+        return Sym.intern("/")
+      end
+
+      @io.ungetc(ch)
+      body = ""
+
+      loop do
+        ch = @io.getc
+
+        raise ReadError, "Reader reached EOF, expecting end of Regexp ('/')" if ch.nil?
+
+        break if ch == "/"
+
+        body << ch
+      end
+
+      option_chars = ""
+
+      loop do
+        ch = @io.getc
+
+        break if ch.nil? || is_whitespace?(ch) || is_delimeter?(ch)
+
+        option_chars << ch
+      end
+
+      options = 0
+      bad_options = ""
+      option_chars.each_char do |ch|
+        case ch
+        when "i"
+          options |= Regexp::IGNORECASE
+        when "x"
+          options |= Regexp::EXTENDED
+        when "m"
+          options |= Regexp::MULTILINE
+        else
+          bad_options << ch
+        end
+      end
+
+      unless bad_options.empty?
+        raise ReadError, "unknown regexp options - #{bad_options}"
+      end
+
+      Regexp.new(body, options)
     end
 
     def read_token
@@ -471,6 +524,23 @@ if __FILE__ == $0
 
       def test_comment_inside_expr
         assert_equal s(q("+"), 1, 2), Reader.new("(+ 1 ; foo bar\n2)").read
+      end
+
+      def test_slash_regexp
+        assert_equal /foo/i, Reader.new("/foo/i").read
+      end
+
+      def test_only_percent
+        assert_equal q("/"), Reader.new("/ foo/").read
+      end
+
+      def test_bad_regexp_options
+        assert_raises(ReadError) { Reader.new("/foo/abcd").read }
+      end
+
+      def test_percent_regexp
+        skip
+        assert_equal %r{foo}i, Reader.new("%r{foo}i").read
       end
     end
   end
