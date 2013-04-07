@@ -51,7 +51,7 @@ class Roughcut
         end
 
         @io.ungetc(ch)
-        return interpret_token(read_token)
+        return parse_token(read_token)
       end
     end
 
@@ -145,7 +145,7 @@ class Roughcut
       s
     end
 
-    def interpret_token(token)
+    def parse_token(token)
       case token
       when "nil"
         nil
