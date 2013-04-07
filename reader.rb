@@ -13,7 +13,8 @@ class Roughcut
       "`" => lambda { |reader| reader.send(:read_quasiquote) },
       "~" => lambda { |reader| reader.send(:read_unquote) },
       ";" => lambda { |reader| reader.send(:read_comment) },
-      "/" => lambda { |reader| reader.send(:read_regexp) }
+      "/" => lambda { |reader| reader.send(:read_regexp) },
+      "%" => lambda { |reader| reader.send(:read_percent_regexp) }
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -190,6 +191,46 @@ class Roughcut
         option_chars << ch
       end
 
+      build_regexp(body, option_chars)
+    end
+
+    def read_percent_regexp
+      ch1 = @io.getc
+      ch2 = @io.getc
+
+      if ch1 != "r" || ch2 != "{"
+        @io.ungetc(ch2)
+        @io.ungetc(ch1)
+
+        return @io # parse a token
+      end
+
+      body = ""
+
+      loop do
+        ch = @io.getc
+
+        raise ReadError, "Reader reached EOF, expecting end of Regexp ('}')" if ch.nil?
+
+        break if ch == "}"
+
+        body << ch
+      end
+
+      option_chars = ""
+
+      loop do
+        ch = @io.getc
+
+        break if ch.nil? || is_whitespace?(ch) || is_delimeter?(ch)
+
+        option_chars << ch
+      end
+
+      build_regexp(body, option_chars)
+    end
+
+    def build_regexp(body, option_chars)
       options = 0
       bad_options = ""
       option_chars.each_char do |ch|
@@ -539,7 +580,6 @@ if __FILE__ == $0
       end
 
       def test_percent_regexp
-        skip
         assert_equal %r{foo}i, Reader.new("%r{foo}i").read
       end
     end
