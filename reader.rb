@@ -393,6 +393,10 @@ if __FILE__ == $0
         assert_equal s(q("quote"), q("foo")), Reader.new("'foo").read
       end
 
+      def test_quoteed_sym_with_quote
+        assert_equal s(q("quote"), q("foo'bar")), Reader.new("'foo'bar").read
+      end
+
       def test_quoted_number
         assert_equal s(q("quote"), 3.14), Reader.new("'3.14").read
       end
