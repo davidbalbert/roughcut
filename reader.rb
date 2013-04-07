@@ -11,7 +11,8 @@ class Roughcut
       ":" => lambda { |reader| reader.send(:read_symbol) },
       "'" => lambda { |reader| reader.send(:read_quote) },
       "`" => lambda { |reader| reader.send(:read_quasiquote) },
-      "~" => lambda { |reader| reader.send(:read_unquote) }
+      "~" => lambda { |reader| reader.send(:read_unquote) },
+      ";" => lambda { |reader| reader.send(:read_comment) },
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -37,7 +38,13 @@ class Roughcut
         end
 
         if MACROS.has_key?(ch)
-          return MACROS[ch].call(self)
+          ret = MACROS[ch].call(self)
+
+          if ret == @io
+            next
+          else
+            return ret
+          end
         end
 
         if "+-".include?(ch)
@@ -141,6 +148,15 @@ class Roughcut
         @io.ungetc(ch)
         List.build(Sym.intern("unquote"), read)
       end
+    end
+
+    def read_comment
+      loop do
+        ch = @io.getc
+        break if ch.nil? || ch == "\n"
+      end
+
+      @io
     end
 
     def read_token
@@ -443,6 +459,18 @@ if __FILE__ == $0
 
       def test_unquote_splicing_list
         assert_equal s(q("unquote-splicing"), s(q("foo"))), Reader.new("~@(foo)").read
+      end
+
+      def test_comment
+        assert_raises(ReadError) { Reader.new("; foo bar baz").read }
+      end
+
+      def test_expr_and_comment
+        assert_equal s(q("+"), 1, 2), Reader.new("(+ 1 2) ; foo bar baz").read
+      end
+
+      def test_comment_inside_expr
+        assert_equal s(q("+"), 1, 2), Reader.new("(+ 1 ; foo bar\n2)").read
       end
     end
   end
