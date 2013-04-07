@@ -25,6 +25,8 @@ class Roughcut
     end
 
     def read
+      @continue_parsing = false
+
       loop do
         ch = @io.getc
 
@@ -44,6 +46,8 @@ class Roughcut
 
           if ret == @io
             next
+          elsif @continue_parsing == true
+            @continue_parsing = false
           else
             return ret
           end
@@ -202,7 +206,9 @@ class Roughcut
         @io.ungetc(ch2)
         @io.ungetc(ch1)
 
-        return @io # parse a token
+        @continue_parsing = true
+
+        return nil
       end
 
       body = ""
@@ -581,6 +587,14 @@ if __FILE__ == $0
 
       def test_percent_regexp
         assert_equal %r{foo}i, Reader.new("%r{foo}i").read
+      end
+
+      def test_percent_sym
+        assert_equal q("%rufus"), Reader.new("%rufus").read
+      end
+
+      def test_percent
+        assert_equal q("%"), Reader.new("%").read
       end
     end
   end
