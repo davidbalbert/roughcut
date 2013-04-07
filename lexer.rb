@@ -9,6 +9,7 @@ class Lexer
     @input = input
     @start = 0
     @pos = 0
+    @done = false
 
     @lex_fiber = Fiber.new do
       lex_func = lex_start
@@ -25,7 +26,7 @@ class Lexer
 =end
 
   def done?
-    @pos == @input.length
+    @done
   end
 
   def next_token
@@ -57,7 +58,8 @@ class Lexer
       when "\t", "\n", " ", "\r"
         ignore_whitespace
       when :eof
-        nil
+        @done = true
+        emit(:eof)
       else
         backup
         raise LexError, "Unexpected input character: '#{@input[@pos]}'"
@@ -81,7 +83,8 @@ class Lexer
   def ignore_whitespace
     lambda {
       loop do
-        break unless "\t\n\r ".include?(peek)
+        c = peek
+        break if c == :eof || !("\t\n\r ".include?(c))
         next_char
       end
       ignore
@@ -108,13 +111,13 @@ class Lexer
 
   def next_char
     if @pos >= @input.length
-      :eof
+      c = :eof
     else
       c = @input[@pos]
-      @pos += 1
-
-      c
     end
+    @pos += 1
+
+    c
   end
 
   def backup

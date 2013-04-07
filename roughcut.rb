@@ -6,6 +6,62 @@ class Roughcut
 
   class Exit < StandardError; end
 
+  class Lexer
+    def initialize
+      @input = ""
+    end
+
+    def <<(input)
+      @input = @input + input
+    end
+  end
+
+  class Parser
+    def initialize
+      @done = false
+      @ast = nil
+      @lexer = Lexer.new
+
+      @parser = Fiber.new do
+        @ast = parse_vals
+      end
+    end
+
+    def done?
+      @done
+    end
+
+    def <<(input)
+      @lexer << input
+
+      continue_parsing
+
+      input
+    end
+
+    def ast
+      unless done?
+        raise ParseError, "Can't generate AST. Parsing is incomplete."
+      end
+
+      @ast
+    end
+
+    private
+    def continue_parsing
+      @parser.resume
+    end
+
+    def parse_vals
+      vals = []
+      until @lexer.empty? || tokens.first == :")"
+        vals << parse_val(tokens)
+      end
+
+      vals
+    end
+  end
+
   class Id
     def initialize(sym)
       @sym = sym
@@ -275,12 +331,23 @@ class Roughcut
       break if input.nil? || input == " "
       next if input.gsub(/;.*?$/, "").strip.empty?
 
+      if Readline::HISTORY.size == 0 || Readline::HISTORY[-1] != input
+        Readline::HISTORY << input
+      end
+
       begin
-        if Readline::HISTORY.size == 0 || Readline::HISTORY[-1] != input
-          Readline::HISTORY << input
+        parser = Parser.new
+        parser << input + "\n"
+
+        until parser.done?
+          input = Readline.readline("     ...> ")
+          break if input.nil?
+          next if input.gsub(/;.*?$/, "").strip.empty?
+
+          parser << input + "\n"
         end
 
-        out = eval(parse(input))
+        out = eval(parser.ast)
         @env[:_] = out
 
         print "=> "
@@ -297,7 +364,6 @@ class Roughcut
         STDERR.puts("#{e.class}: #{e.message}")
         puts backtrace
         clear_stack!
-        #STDERR.puts(e.backtrace)
       rescue SyntaxError => e
         STDERR.puts("#{e.class}: #{e.message}")
         puts backtrace
