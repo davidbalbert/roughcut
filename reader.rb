@@ -9,7 +9,9 @@ class Roughcut
       "(" => lambda { |reader| reader.send(:read_list) },
       "\"" => lambda { |reader| reader.send(:read_string) },
       ":" => lambda { |reader| reader.send(:read_symbol) },
-      "'" => lambda { |reader| reader.send(:read_quote) }
+      "'" => lambda { |reader| reader.send(:read_quote) },
+      "`" => lambda { |reader| reader.send(:read_quasiquote) },
+      "~" => lambda { |reader| reader.send(:read_unquote) }
     }
 
     FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
@@ -125,6 +127,20 @@ class Roughcut
 
     def read_quote
       List.build(Sym.intern("quote"), read)
+    end
+
+    def read_quasiquote
+      List.build(Sym.intern("quasiquote"), read)
+    end
+
+    def read_unquote
+      ch = @io.getc
+      if ch == "@"
+        List.build(Sym.intern("unquote-splicing"), read)
+      else
+        @io.ungetc(ch)
+        List.build(Sym.intern("unquote"), read)
+      end
     end
 
     def read_token
@@ -403,6 +419,30 @@ if __FILE__ == $0
 
       def test_quoted_list
         assert_equal s(q("quote"), s(q("foo"), q("bar"))), Reader.new("'(foo bar)").read
+      end
+
+      def test_quasiquoted_sym
+        assert_equal s(q("quasiquote"), q("foo")), Reader.new("`foo").read
+      end
+
+      def test_quasiquoted_list
+        assert_equal s(q("quasiquote"), s(q("foo"))), Reader.new("`(foo)").read
+      end
+
+      def test_unquote_sym
+        assert_equal s(q("unquote"), q("foo")), Reader.new("~foo").read
+      end
+
+      def test_unquote_list
+        assert_equal s(q("unquote"), s(q("foo"))), Reader.new("~(foo)").read
+      end
+
+      def test_unquote_splicing_sym
+        assert_equal s(q("unquote-splicing"), q("foo")), Reader.new("~@foo").read
+      end
+
+      def test_unquote_splicing_list
+        assert_equal s(q("unquote-splicing"), s(q("foo"))), Reader.new("~@(foo)").read
       end
     end
   end
