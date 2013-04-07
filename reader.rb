@@ -41,18 +41,6 @@ class Roughcut
           return read_number
         end
 
-        if MACROS.has_key?(ch)
-          ret = MACROS[ch].call(self)
-
-          if ret == @io
-            next
-          elsif @continue_parsing == true
-            @continue_parsing = false
-          else
-            return ret
-          end
-        end
-
         if "+-".include?(ch)
           ch2 = @io.getc
 
@@ -63,6 +51,18 @@ class Roughcut
           end
 
           @io.ungetc(ch2)
+        end
+
+        if MACROS.has_key?(ch)
+          ret = MACROS[ch].call(self)
+
+          if ret == @io
+            next
+          elsif @continue_parsing == true
+            @continue_parsing = false
+          else
+            return ret
+          end
         end
 
         @io.ungetc(ch)
@@ -135,6 +135,17 @@ class Roughcut
     end
 
     def read_symbol
+      ch = @io.getc
+
+      # we're looking for a second colon for a leading ::
+      if ch == ":"
+        @io.ungetc(":")
+
+        @continue_parsing = true
+        return nil
+      end
+
+      @io.ungetc(ch)
       read_token.intern
     end
 
@@ -499,6 +510,14 @@ if __FILE__ == $0
 
       def test_ruby_symbol
         assert_equal :foo, Reader.new(":foo").read
+      end
+
+      def test_const_lookup_operator
+        assert_equal Sym.intern("Foo::Bar"), Reader.new("Foo::Bar").read
+      end
+
+      def test_absolute_const_lookup_operator
+        assert_equal Sym.intern("::Foo::Bar"), Reader.new("::Foo::Bar").read
       end
 
       def test_complicated_ruby_symbol
