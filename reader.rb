@@ -502,11 +502,11 @@ if __FILE__ == $0
       end
 
       def test_sym
-        assert_equal Id.intern("foo"), Reader.new("foo").read
+        assert_equal q("foo"), Reader.new("foo").read
       end
 
       def test_extra_chars
-        assert_equal Id.intern("foo"), Reader.new("foo bar baz").read
+        assert_equal q("foo"), Reader.new("foo bar baz").read
       end
 
       def test_integer
@@ -560,11 +560,11 @@ if __FILE__ == $0
       end
 
       def test_const_lookup_operator
-        assert_equal Id.intern("Foo::Bar"), Reader.new("Foo::Bar").read
+        assert_equal q("Foo::Bar"), Reader.new("Foo::Bar").read
       end
 
       def test_absolute_const_lookup_operator
-        assert_equal Id.intern("::Foo::Bar"), Reader.new("::Foo::Bar").read
+        assert_equal q("::Foo::Bar"), Reader.new("::Foo::Bar").read
       end
 
       def test_complicated_ruby_symbol
