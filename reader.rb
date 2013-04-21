@@ -17,7 +17,7 @@ class Roughcut
       "%" => lambda { |reader| reader.send(:read_percent_regexp) }
     }
 
-    FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?\z/
+    FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)([eE][+-]?[0-9]+)?\z/
     INT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)\z/
 
     def initialize(input)
@@ -469,15 +469,21 @@ if __FILE__ == $0
       end
 
       def test_integer
-        assert_equal 123, Reader.new("123").read
+        result = Reader.new("123").read
+        assert_equal 123, result
+        assert_kind_of Fixnum, result
       end
 
       def test_positive_integer
-        assert_equal 123, Reader.new("+123").read
+        result = Reader.new("+123").read
+        assert_equal 123, result
+        assert_kind_of Fixnum, result
       end
 
       def test_negative_integer
-        assert_equal -123, Reader.new("-123").read
+        result = Reader.new("-123").read
+        assert_equal -123, result
+        assert_kind_of Fixnum, result
       end
 
       def test_float
