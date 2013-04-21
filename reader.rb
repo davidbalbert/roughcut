@@ -39,7 +39,7 @@ class Roughcut
         if ch == "."
           ch2 = @io.getc
 
-          if is_whitespace?(ch2)
+          if is_whitespace?(ch2) || ch2.nil?
             raise ReadError, "Unexpected '.' outside dotted pair"
           end
 
@@ -113,6 +113,8 @@ class Roughcut
             return vals.reverse.reduce(tail) do |rest, v|
               List.new(v, rest)
             end
+          elsif ch2.nil?
+            raise ReadError, "Reader reached EOF"
           else
             @io.ungetc(ch2)
           end
@@ -670,6 +672,7 @@ if __FILE__ == $0
       end
 
       def test_unfinished_dotted_pair
+        assert_raises(ReadError) { Reader.new("(1 .").read }
         assert_raises(ReadError) { Reader.new("(1 . ").read }
         assert_raises(ReadError) { Reader.new("(1 . 2").read }
       end
