@@ -191,20 +191,20 @@ class Roughcut
     end
 
     def read_quote
-      List.build(Sym.intern("quote"), read)
+      List.build(Id.intern("quote"), read)
     end
 
     def read_quasiquote
-      List.build(Sym.intern("quasiquote"), read)
+      List.build(Id.intern("quasiquote"), read)
     end
 
     def read_unquote
       ch = @io.getc
       if ch == "@"
-        List.build(Sym.intern("unquote-splicing"), read)
+        List.build(Id.intern("unquote-splicing"), read)
       else
         @io.ungetc(ch)
-        List.build(Sym.intern("unquote"), read)
+        List.build(Id.intern("unquote"), read)
       end
     end
 
@@ -221,7 +221,7 @@ class Roughcut
       ch = @io.getc
 
       if is_whitespace?(ch)
-        return Sym.intern("/")
+        return Id.intern("/")
       end
 
       @io.ungetc(ch)
@@ -338,7 +338,7 @@ class Roughcut
       when "false"
         false
       else
-        Sym.intern(token)
+        Id.intern(token)
       end
     end
 
@@ -351,7 +351,7 @@ class Roughcut
     end
   end
 
-  class Sym
+  class Id
     class << self
       alias intern new
     end
@@ -361,7 +361,7 @@ class Roughcut
     end
 
     def ==(other)
-      if other.is_a?(Sym)
+      if other.is_a?(Id)
         @str == other.str
       else
         false
@@ -373,7 +373,7 @@ class Roughcut
     end
 
     def inspect
-      "#<Roughcut::Sym: #{to_s}>"
+      "#<Roughcut::Id: #{to_s}>"
     end
 
     protected
@@ -472,7 +472,7 @@ if __FILE__ == $0
   require 'minitest/autorun'
 
   def q(name)
-    Roughcut::Sym.intern(name)
+    Roughcut::Id.intern(name)
   end
 
   def s(*args)
@@ -502,11 +502,11 @@ if __FILE__ == $0
       end
 
       def test_sym
-        assert_equal Sym.intern("foo"), Reader.new("foo").read
+        assert_equal Id.intern("foo"), Reader.new("foo").read
       end
 
       def test_extra_chars
-        assert_equal Sym.intern("foo"), Reader.new("foo bar baz").read
+        assert_equal Id.intern("foo"), Reader.new("foo bar baz").read
       end
 
       def test_integer
@@ -560,11 +560,11 @@ if __FILE__ == $0
       end
 
       def test_const_lookup_operator
-        assert_equal Sym.intern("Foo::Bar"), Reader.new("Foo::Bar").read
+        assert_equal Id.intern("Foo::Bar"), Reader.new("Foo::Bar").read
       end
 
       def test_absolute_const_lookup_operator
-        assert_equal Sym.intern("::Foo::Bar"), Reader.new("::Foo::Bar").read
+        assert_equal Id.intern("::Foo::Bar"), Reader.new("::Foo::Bar").read
       end
 
       def test_complicated_ruby_symbol
