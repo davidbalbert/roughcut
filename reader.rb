@@ -21,7 +21,11 @@ class Roughcut
     INT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)\z/
 
     def initialize(input)
-      @io = StringIO.new(input)
+      if input.is_a?(String)
+        @io = StringIO.new(input)
+      else
+        @io = input
+      end
     end
 
     def read
