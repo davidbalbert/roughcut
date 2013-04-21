@@ -36,6 +36,16 @@ class Roughcut
 
         raise ReadError, "Reader reached EOF" if ch.nil?
 
+        if ch == "."
+          ch2 = @io.getc
+
+          if is_whitespace?(ch2)
+            raise ReadError, "Unexpected '.' outside dotted pair"
+          end
+
+          @io.ungetc(ch2)
+        end
+
         if "0123456789".include?(ch)
           @io.ungetc(ch)
           return read_number
@@ -82,6 +92,31 @@ class Roughcut
         end
 
         raise ReadError, "Reader reached EOF, expecting ')'" if ch.nil?
+
+        if ch == "."
+          ch2 = @io.getc
+
+          if is_whitespace?(ch2)
+            # read a dotted pair
+            @io.ungetc(ch2)
+
+            tail = read
+
+            ch2 = @io.getc
+            while is_whitespace?(ch2)
+              ch2 = @io.getc
+            end
+
+            raise ReadError, "Reader reached EOF, expecting ')'" if ch2.nil?
+            raise ReadError, "More than one object follows '.' in list" unless ch2 == ")"
+
+            return vals.reverse.reduce(tail) do |rest, v|
+              List.new(v, rest)
+            end
+          else
+            @io.ungetc(ch2)
+          end
+        end
 
         break if ch == ")"
 
@@ -343,7 +378,6 @@ class Roughcut
 
   class EmptyList
     include Singleton
-    include Enumerable
 
     def first
       nil
@@ -353,10 +387,8 @@ class Roughcut
       self
     end
 
-    def each
-      unless block_given?
-        to_enum
-      end
+    def each_node
+      return to_enum(:each_node) unless block_given?
 
       self
     end
@@ -372,7 +404,6 @@ class Roughcut
 
   class List
     attr_accessor :first, :rest
-    include Enumerable
 
     def self.build(*args)
       if args.empty?
@@ -395,26 +426,30 @@ class Roughcut
       end
     end
 
-    def each
-      unless block_given?
-        to_enum
-      else
-        l = self
-        until l.is_a?(EmptyList)
-          yield l.first
-          l = l.rest
-        end
+    def each_node
+      return to_enum(:each_node) unless block_given?
+
+      l = self
+      until l.is_a?(EmptyList)
+        yield l
+
+        # for dotted pairs
+        break unless l.respond_to?(:rest)
+        l = l.rest
       end
 
       self
     end
 
     def to_s
-      elements = map do |e|
-        if e.nil?
+      elements = each_node.map do |n|
+        if !n.respond_to?(:first)
+          # dotted pairs
+          ". #{n}"
+        elsif n.first.nil?
           "nil"
         else
-          e.to_s
+          n.first.to_s
         end
       end.join(" ")
 
@@ -620,6 +655,35 @@ if __FILE__ == $0
 
       def test_percent
         assert_equal q("%"), Reader.new("%").read
+      end
+
+      def test_dotted_pair_to_s
+        assert_equal "(1 2 . 3)", List.new(1, List.new(2, 3)).to_s
+      end
+
+      def test_read_dotted_pair
+        assert_equal List.new(1, List.new(2, 3)), Reader.new("(1 2 . 3)").read
+      end
+
+      def test_bad_dotted_pair
+        assert_raises(ReadError) { Reader.new("(1 2 . 3 4").read }
+      end
+
+      def test_unfinished_dotted_pair
+        assert_raises(ReadError) { Reader.new("(1 . ").read }
+        assert_raises(ReadError) { Reader.new("(1 . 2").read }
+      end
+
+      def test_regular_list_dotted_pair
+        assert_equal s(1, 2, 3), Reader.new("(1 . (2 . (3 . ())))").read
+      end
+
+      def test_sym_with_leading_dot
+        assert_equal q(".foo"), Reader.new(".foo").read
+      end
+
+      def test_dot_alone
+        assert_raises(ReadError) { Reader.new(" . ").read }
       end
     end
   end
