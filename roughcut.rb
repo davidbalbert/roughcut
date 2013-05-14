@@ -252,23 +252,34 @@ class Roughcut
   def simple_repl
     @env[:env] = @env
 
-    reader = Reader.new($stdin)
+    reader = Reader.new(STDIN)
 
     loop do
       print "roughcut> "
 
-      expr = reader.read(false)
-      out = eval(expr)
+      begin
+        expr = reader.read(false)
+        out = eval(expr)
 
-      print "=> "
+        print "=> "
 
-      case out
-      when List, EmptyList, Id
-        puts out
-      else
-        p out
+        case out
+        when List, EmptyList, Id
+          puts out
+        else
+          p out
+        end
+      rescue Exit
+        break
+      rescue StandardError => e
+        STDERR.puts("#{e.class}: #{e.message}")
+        puts backtrace
+        clear_stack!
+      rescue SyntaxError => e
+        STDERR.puts("#{e.class}: #{e.message}")
+        puts backtrace
+        clear_stack!
       end
-
     end
   end
 
@@ -285,6 +296,8 @@ class Roughcut
       else
         func_name = o.first
         func = eval(func_name, env)
+
+        @stack.unshift(func_name)
 
         result = case func_name
         when q("quote"), q("quasiquote"), q("def"), q("set!"), q("fn"), q("macro")
@@ -314,67 +327,12 @@ class Roughcut
           end
         end
 
+        @stack.shift
+
         result
       end
     else
       o
-    end
-  end
-
-  def old_eval(sexp, env=@env)
-    if sexp.is_a?(Sexp) && sexp.empty?
-      sexp # () should return the empty list
-    elsif sexp.is_a?(Sexp)
-      func = sexp[0].respond_to?(:to_sym) ? sexp[0].to_sym : sexp[0]
-
-      @stack.unshift(func)
-
-      result = case func
-      when :quote, :quasiquote, :def, :set!, :fn, :macro
-        eval(sexp[0], env).call(env, *sexp[1..-1])
-      when :if
-        eval(sexp[0], env).call(env, eval(sexp[1], env), *sexp[2..-1])
-      when :send
-        # send is a special form that evals it's second argument as ruby code
-        receiver = sexp[1]
-        if receiver.is_a?(Id) && env.has_key?(receiver.to_sym)
-          receiver = env[receiver.to_sym]
-        elsif receiver.is_a?(Id)
-          receiver = super(receiver)
-        elsif receiver.is_a?(Sexp) || receiver.is_a?(LazyRange)
-          receiver = eval(receiver, env)
-        end
-
-        eval(sexp[0], env).call(receiver, *sexp[2..-1].map { |o| eval(o, env) })
-      else
-        @stack.shift
-
-        f = eval(sexp[0], env)
-
-        @stack.unshift(func)
-
-        if f.is_a?(Macro)
-          eval(f.call(*sexp[1..-1]), env)
-        else
-          f.call(*sexp[1..-1].map { |o| eval(o, env) })
-        end
-      end
-
-      @stack.shift
-
-      result
-    elsif sexp.is_a?(Array) # Top level
-      sexp.map { |s| eval(s, env) }.last
-    elsif sexp.is_a?(Id)
-      if env.has_key?(sexp.to_sym)
-        env[sexp.to_sym]
-      else
-        raise NameError, "#{sexp} is undefined"
-      end
-    elsif sexp.is_a?(LazyRange)
-      sexp.to_range(self, env)
-    else
-      sexp
     end
   end
 
