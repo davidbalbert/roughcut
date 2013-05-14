@@ -489,6 +489,7 @@ class Roughcut
 
   class List
     include Enumerable
+    include Helpers
 
     attr_accessor :first, :rest
 
@@ -564,8 +565,10 @@ class Roughcut
           ". #{n}"
         elsif n.first.nil?
           "nil"
-        else
+        elsif list?(n.first) || n.first.is_a?(Id)
           n.first.to_s
+        else
+          n.first.inspect
         end
       end.join(" ")
 
