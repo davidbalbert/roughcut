@@ -313,7 +313,10 @@ class Roughcut
       loop do
         ch = @io.getc
 
-        break if ch.nil? || is_whitespace?(ch) || is_delimeter?(ch)
+        if ch.nil? || is_whitespace?(ch) || is_delimeter?(ch)
+          @io.ungetc(ch)
+          break
+        end
 
         option_chars << ch
       end
@@ -792,6 +795,14 @@ if __FILE__ == $0
 
       def test_regexp_with_option_in_list
         assert_equal s(/foo/i), Reader.new("(/foo/i)").read
+      end
+
+      def test_percent_regexp_in_list
+        assert_equal s(/foo/), Reader.new("(%r{foo})").read
+      end
+
+      def test_percent_regexp_with_option_in_list
+        assert_equal s(/foo/i), Reader.new("(%r{foo}i)").read
       end
 
       def test_percent_sym
