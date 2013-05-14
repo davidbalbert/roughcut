@@ -1,86 +1,21 @@
 require 'readline'
 require 'pp'
 
+require './reader'
+require './helpers'
+
 class Roughcut
   HISTORY_FILE = File.expand_path("~/.roughcut_history")
 
   class Exit < StandardError; end
 
-  class Id
-    def initialize(sym)
-      @sym = sym
-    end
-
-    def ==(other)
-      @sym == other.to_sym
-    end
-
-    def to_s
-      @sym.to_s
-    end
-    alias to_str to_s
-
-    def inspect
-      "id:#{@sym.to_s}"
-    end
-
-    def to_sym
-      @sym
-    end
-  end
-
-  class LazyRange
-    def initialize(start, stop, exclusive=false)
-      @start = start
-      @stop = stop
-      @exclusive = exclusive
-    end
-
-    def to_range(roughcut, env)
-      Range.new(roughcut.eval(@start, env), roughcut.eval(@stop, env), @exclusive)
-    end
-
-    def to_s
-      if @exclusive
-        "#{@start}...#{@stop}"
-      else
-        "#{@start}..#{@stop}"
-      end
-    end
-  end
-
-  class Sexp < Array
-    def to_s
-      if first.is_a?(Id) && first == :quote
-        "'#{self[1].to_s}"
-      elsif first.is_a?(Id) && first == :quasiquote
-        "`#{self[1].to_s}"
-      elsif first.is_a?(Id) && first == :unquote
-        "~#{self[1].to_s}"
-      elsif first.is_a?(Id) && first == :"unquote-splicing"
-        "~@#{self[1].to_s}"
-      else
-        "(#{reduce("") do |out, o|
-          if o.is_a?(String)
-            o = "\"#{o}\""
-          elsif o.is_a?(Symbol)
-            o = o.inspect
-          elsif o.nil?
-            o = "nil"
-          end
-          out << o.to_s + " "
-        end.strip})"
-      end
-    end
-
-    def inspect
-      to_s
-    end
-  end
+  include Helpers
 
   class Function
+    include Helpers
+
     def initialize(args, expressions, &block)
-      @sexp = Sexp.new([Id.new(:fn), args, *expressions])
+      @sexp = List.build(q("fn"), args, *expressions)
       @block = lambda &block
     end
 
@@ -109,20 +44,20 @@ class Roughcut
     private
 
     def set_sexp_with_name!
-      @sexp = Sexp.new([Id.new(:defn), @name, *@sexp[1..-1]])
+      @sexp = List.build(q("defn"), @name, *@sexp.rest)
     end
   end
 
   class Macro < Function
     def initialize(args, body, &block)
-      @sexp = Sexp.new([Id.new(:macro), args, body])
+      @sexp = List.build(q("macro"), args, body)
       @block = lambda &block
     end
 
     private
 
     def set_sexp_with_name!
-      @sexp = Sexp.new([Id.new(:defmacro), @name, *@sexp[1..-1]])
+      @sexp = List.build(q("defmacro"), @name, *@sexp.rest)
     end
   end
 
@@ -170,7 +105,7 @@ class Roughcut
     @stack = []
 
     @env = Env.new({
-      :p => lambda do |*args|
+      q("p") => lambda do |*args|
         out = args.map do |a|
           if a.is_a?(Id)
             a.to_s
@@ -183,14 +118,14 @@ class Roughcut
         nil
       end,
 
-      :puts => lambda do |*args|
+      q("puts") => lambda do |*args|
         out = args.map { |a| a.to_s }.join(" ")
         puts out
 
         nil
       end,
 
-      :send => lambda do |receiver, method=nil, *args|
+      q("send") => lambda do |receiver, method=nil, *args|
         if method
           receiver.send(method, *args)
         else
@@ -198,25 +133,25 @@ class Roughcut
         end
       end,
 
-      :quote => lambda { |env, list| list },
-      :quasiquote => lambda { |env, list| process_unquotes(list, env) },
-      :apply => lambda { |f, *args, arg_list| f.call(*(args + arg_list)) },
+      q("quote") => lambda { |env, list| list },
+      q("quasiquote") => lambda { |env, list| process_unquotes(list, env) },
+      q("apply") => lambda { |f, *args, arg_list| f.call(*(args + arg_list)) },
 
-      :def => lambda do |env, name, val|
+      q("def") => lambda do |env, name, val|
         val = eval(val, env)
         # for functions and macros
         if val.respond_to?(:name=)
           val.name = name
         end
 
-        @env[name.to_sym] = val
+        @env[name] = val
       end,
 
-      :set! => lambda do |env, name, val|
+      q("set!") => lambda do |env, name, val|
         env.set!(name.to_sym, eval(val, env))
       end,
 
-      :fn => lambda do |env, arg_names, *expressions|
+      q("fn") => lambda do |env, arg_names, *expressions|
         if expressions.empty?
           raise SyntaxError, "wrong number of arguments (1 for 2)"
         end
@@ -232,7 +167,7 @@ class Roughcut
         end
       end,
 
-      :macro => lambda do |env, arg_names, body|
+      q("macro") => lambda do |env, arg_names, body|
         min_args, max_args = parse_argument_list(arg_names)
 
         Macro.new(arg_names, body) do |*args|
@@ -242,12 +177,13 @@ class Roughcut
         end
       end,
 
-      :load => lambda do |filename|
-        eval(parse(File.read(File.expand_path(filename))))
+      q("load") => lambda do |filename|
+        sexps = Reader.new(File.read(File.expand_path(filename))).read_all
+        sexps.each {|sexp| eval(sexp) }
         true
       end,
 
-      :if => lambda do |env, condition, yes, no=nil|
+      q("if") => lambda do |env, condition, yes, no=nil|
         if condition
           eval(yes, env)
         else
@@ -256,7 +192,7 @@ class Roughcut
       end
     })
 
-    @env[:load].call("stdlib.lisp")
+    @env[q("load")].call("stdlib.lisp")
   end
 
   def repl
@@ -313,61 +249,79 @@ class Roughcut
     load_history(@old_history)
   end
 
-  def lex(input)
-    # remove comments
-    input = input.gsub(/;.*?$/, "").strip
-    tokens = []
-    until input.empty?
-      input = input.lstrip
+  def simple_repl
+    @env[:env] = @env
 
-      if md = /\A(~@)/.match(input)
-        tokens << Id.new(md[1].to_sym)
-      elsif md = /\A(['`~()])/.match(input)
-        tokens << Id.new(md[1].to_sym)
-      elsif md = /\A(([^\s()"'`~:]+|-?\d+)(\.\.\.?)([^\s()"'`~:]+|-?\d+))/.match(input)
-        first = md[2].to_i.to_s == md[2] ? md[2].to_i : Id.new(md[2].to_sym)
-        last = md[4].to_i.to_s == md[4] ? md[4].to_i : Id.new(md[4].to_sym)
+    reader = Reader.new($stdin)
 
-        tokens << if md[3].length == 2
-          LazyRange.new(first, last, false)
-        else
-          LazyRange.new(first, last, true)
-        end
-      elsif md = /\A(-?\d+\.\d+)/.match(input)
-        tokens << md[1].to_f
-      elsif md = /\A(-?\d+)/.match(input)
-        tokens << md[1].to_i
-      elsif md = /\A(\/(\/|\S.*?\/)[a-z]*)/.match(input)
-        # Regexp syntax. Due to limitations with our lexer, the first character
-        # of the regexp body must not be whitespace
-        tokens << BasicObject.new.instance_eval(md[1])
-      elsif md = /\A(%r\{.*?\}[a-z]*)/.match(input)
-        # alternative regexp syntax: %r{body}options
-        # works even with a leading space
-        tokens << BasicObject.new.instance_eval(md[1])
-      elsif md = /\A("(.*?)")/.match(input)
-        tokens << md[2]
-      elsif md = /\A(nil)[\s)]/.match(input)
-        tokens << nil
-      elsif md = /\A(true)[\s)]/.match(input)
-        tokens << true
-      elsif md = /\A(false)[\s)]/.match(input)
-        tokens << false
-      elsif md = /\A((::)?[^\s()"'`~:]+(::[^\s()"'`~:]+)*)/.match(input)
-        tokens << Id.new(md[1].to_sym)
-      elsif md =/\A(:([^\s()"'`~:]*))/.match(input)
-        tokens << md[2].to_sym
+    loop do
+      print "roughcut> "
+
+      expr = reader.read(false)
+      out = eval(expr)
+
+      print "=> "
+
+      case out
+      when List, EmptyList, Id
+        puts out
       else
-        raise SyntaxError, "Error at input: #{input}"
+        p out
       end
-      input = input[md[1].length..-1]
 
     end
-
-    tokens
   end
 
-  def eval(sexp, env=@env)
+  def eval(o, env=@env)
+    if o.is_a?(Id)
+      if env.has_key?(o)
+        env[o]
+      else
+        raise NameError, "#{o} is undefined"
+      end
+    elsif list?(o)
+      if o.empty?
+        o # () should return the empty list
+      else
+        func_name = o.first
+        func = eval(func_name, env)
+
+        result = case func_name
+        when q("quote"), q("quasiquote"), q("def"), q("set!"), q("fn"), q("macro")
+          func.call(env, *o.rest)
+        when q("if")
+          func.call(env,
+                    eval(o.rest.first, env),
+                    o.rest.rest.first,
+                    o.rest.rest.rest.first)
+        when q("send")
+          # send is a special form that evals it's second argument as ruby code
+          receiver = o.rest.first
+          if receiver.is_a?(Id) && env.has_key?(receiver)
+            receiver = env[receiver]
+          elsif receiver.is_a?(Id)
+            receiver = super(receiver.to_s)
+          elsif list?(receiver)
+            receiver = eval(receiver, env)
+          end
+
+          func.call(receiver, *o.rest.rest.map { |obj| eval(obj, env) })
+        else
+          if func.is_a?(Macro)
+            eval(func.call(*o.rest), env)
+          else
+            func.call(*o.rest.map { |obj| eval(obj, env) })
+          end
+        end
+
+        result
+      end
+    else
+      o
+    end
+  end
+
+  def old_eval(sexp, env=@env)
     if sexp.is_a?(Sexp) && sexp.empty?
       sexp # () should return the empty list
     elsif sexp.is_a?(Sexp)
@@ -424,109 +378,50 @@ class Roughcut
     end
   end
 
-  def parse(input)
-    tokens = lex(input)
-
-    expressions = parse_vals(tokens)
-
-    expect_done(tokens)
-
-    expressions
-  end
-
-  private
-
-  def parse_vals(tokens)
-    vals = []
-    until tokens.empty? || tokens.first == :")"
-      vals << parse_val(tokens)
-    end
-
-    vals
-  end
-
-  def parse_val(tokens)
-    if tokens.first == :"'"
-      tokens.shift
-      Sexp.new([Id.new(:quote), parse_val(tokens)])
-    elsif tokens.first == :`
-      tokens.shift
-      sexp = Sexp.new([Id.new(:quasiquote), parse_val(tokens)])
-
-      if sexp[1].is_a?(Sexp) && sexp[1][0] == :"unquote-splicing"
-        raise SyntaxError, "You cannot use unquote-splicing outside of a list"
-      end
-
-      sexp
-    elsif tokens.first == :~
-      tokens.shift
-      Sexp.new([Id.new(:unquote), parse_val(tokens)])
-    elsif tokens.first == :"~@"
-      tokens.shift
-      Sexp.new([Id.new(:"unquote-splicing"), parse_val(tokens)])
-    elsif tokens.first == :"("
-      parse_sexp(tokens)
-    else
-      tokens.shift
-    end
-  end
-
-  def parse_sexp(tokens)
-    expect(:"(", tokens)
-
-    sexp = Sexp.new(parse_vals(tokens))
-
-    expect(:")", tokens)
-
-    sexp
-  end
-
-  def expect(type, tokens)
-    t = tokens.shift
-    raise SyntaxError, "Expecting #{type}, got a '#{t}'" unless t == type
-    t
-  end
-
-  def expect_done(tokens)
-    raise SyntaxError, "Expected end of input but got a '#{tokens.first}'" unless tokens.empty?
-  end
-
-  def process_unquotes(sexp, env)
-    if sexp.is_a?(Sexp)
-      if sexp.first == :unquote
-        eval(*sexp[1..-1], env)
-      elsif sexp.first == :"unquote-splicing"
-        Sexp.new([sexp[0], *eval(*sexp[1..-1], env)])
+  # TODO: I think process_unquotes and splice are both kind of hard to read and
+  # should probably be rewritten.
+  def process_unquotes(o, env)
+    if list?(o)
+      if o.first == q("unquote")
+        fail "unquote expects only one operand" unless o.size == 2
+        eval(o.rest.first, env)
+      elsif o.first == q("unquote-splicing")
+        fail "unquote-splicing expects only one operand" unless o.size == 2
+        List.build(o.first, *eval(o.rest.first, env))
       else
-        sexp = Sexp.new(sexp.map { |el| process_unquotes(el, env) })
-        splice(sexp)
+        o = List.build(*o.map { |el| process_unquotes(el, env) })
+
+        # splice in the results of evaling unquote-splicing. We don't have to
+        # worry about splicing at the top level because `~@foo is invalid and
+        # will be caugt by the reader. TODO: Maybe refactor this?
+        splice(o)
       end
     else
-      sexp
+      o
     end
   end
 
-  def splice(sexp)
-    if sexp.is_a?(Sexp)
-      spliced = Sexp.new
-      sexp.each do |o|
-        if o.is_a?(Sexp) && o[0] == :"unquote-splicing"
-          spliced.concat(o[1..-1])
+  def splice(o)
+    if list?(o)
+      spliced = []
+      o.each do |obj|
+        if list?(obj) && obj.first == q("unquote-splicing")
+          spliced.concat(obj.rest.to_a)
         else
-          spliced << o
+          spliced << obj
         end
       end
 
-      spliced
+      List.build(*spliced)
     else
-      sexp
+      o
     end
   end
 
   # returns [min_args, max_args]
   def parse_argument_list(arg_names)
-    if arg_names.include?(:&)
-      unless arg_names.count(:&) == 1 && arg_names.index(:&) == arg_names.size - 2
+    if arg_names.include?(q("&"))
+      unless arg_names.count(q("&")) == 1 && arg_names.index(q("&")) == arg_names.size - 2
         raise SyntaxError, "'&' can only be found in the second to last position of an argument list"
       end
 
@@ -545,28 +440,23 @@ class Roughcut
   end
 
   def zip_args(arg_names, args)
-    arg_names = arg_names.map(&:to_sym)
-    if arg_names.include?(:&)
+    if arg_names.include?(q("&"))
+      arg_names = arg_names.to_a
       required = arg_names.size - 2
-      Hash[arg_names[0..required].zip(args[0..required]) + [[arg_names[-1], Sexp.new(args[required..-1])]]]
+      Hash[arg_names[0...required].zip(args[0...required]) + [[arg_names[-1], List.build(*args[required..-1])]]]
     else
       Hash[arg_names.zip(args)]
     end
   end
 
-  def exists_in_env?(name)
-    name = name.to_sym if name.respond_to?(:to_sym)
-    @env.has_key?(name)
-  end
+  def macroexpand_1(o)
+    if (list?(o) &&
+        @env.has_key?(o.first) &&
+        (macro = eval(o.first)).is_a?(Macro))
 
-  def macroexpand_1(sexp)
-    if (sexp.is_a?(Sexp) &&
-        exists_in_env?(sexp[0]) &&
-        (macro = eval(sexp[0])).is_a?(Macro))
-
-      macro.call(*sexp[1..-1])
+      macro.call(*o.rest)
     else
-      sexp
+      o
     end
   end
 
@@ -590,5 +480,5 @@ class Roughcut
 end
 
 if __FILE__ == $0
-  Roughcut.new.repl
+  Roughcut.new.simple_repl
 end

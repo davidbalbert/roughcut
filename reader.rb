@@ -1,10 +1,16 @@
 require 'stringio'
 require 'singleton'
 
+require './helpers'
+
 class Roughcut
   class ReadError < StandardError; end
 
+  class EOF; end
+
   class Reader
+    include Helpers
+
     MACROS = {
       "(" => lambda { |reader| reader.send(:read_list) },
       "\"" => lambda { |reader| reader.send(:read_string) },
@@ -28,7 +34,19 @@ class Roughcut
       end
     end
 
-    def read
+    def read_all
+      results = []
+
+      loop do
+        out = read(false)
+        break if out == EOF
+        results << out
+      end
+
+      results
+    end
+
+    def read(should_raise_on_eof=true)
       @continue_parsing = false
 
       loop do
@@ -38,7 +56,13 @@ class Roughcut
           ch = @io.getc
         end
 
-        raise ReadError, "Reader reached EOF" if ch.nil?
+        if ch.nil?
+          if should_raise_on_eof
+            raise ReadError, "Reader reached EOF" if ch.nil?
+          else
+            return EOF
+          end
+        end
 
         if ch == "."
           ch2 = @io.getc
@@ -195,7 +219,13 @@ class Roughcut
     end
 
     def read_quasiquote
-      List.build(Id.intern("quasiquote"), read)
+      l = List.build(Id.intern("quasiquote"), read)
+
+      if list?(l.rest.first) && l.rest.first.first == Id.intern("unquote-splicing")
+        raise SyntaxError, "You cannot use unquote-splicing outside of a list"
+      end
+
+      l
     end
 
     def read_unquote
@@ -353,7 +383,13 @@ class Roughcut
 
   class Id
     class << self
-      alias intern new
+      private :new
+
+      def intern(name)
+        @symbol_table ||= {}
+
+        @symbol_table[name] ||= new(name)
+      end
     end
 
     def initialize(str)
@@ -366,6 +402,18 @@ class Roughcut
       else
         false
       end
+    end
+
+    def eql?(other)
+      if other.is_a?(Id)
+        @str.eql?(other.str)
+      else
+        false
+      end
+    end
+
+    def hash
+      @str.hash
     end
 
     def to_s
@@ -383,6 +431,7 @@ class Roughcut
   end
 
   class EmptyList
+    include Enumerable
     include Singleton
 
     def first
@@ -393,10 +442,40 @@ class Roughcut
       self
     end
 
+    def ==(other)
+      other.is_a?(EmptyList)
+    end
+
+    def empty?
+      true
+    end
+
+    def size
+      0
+    end
+
+    def index
+      nil
+    end
+
+    def concat(other)
+      other
+    end
+
+    def each
+      return to_enum unless block_given?
+
+      self
+    end
+
     def each_node
       return to_enum(:each_node) unless block_given?
 
       self
+    end
+
+    def to_a
+      []
     end
 
     def to_s
@@ -409,6 +488,8 @@ class Roughcut
   end
 
   class List
+    include Enumerable
+
     attr_accessor :first, :rest
 
     def self.build(*args)
@@ -432,6 +513,31 @@ class Roughcut
       end
     end
 
+    def empty?
+      false
+    end
+
+    def size
+      inject(0) { |acc, o| acc + 1 }
+    end
+
+    alias index find_index
+
+    def concat(other)
+      # TODO: this could be more efficient we iterate across both lists, but all we really need to do is iterate across the first one
+      List.build(*self, *other)
+    end
+
+    def each
+      return to_enum unless block_given?
+
+      each_node do |n|
+        yield n.first
+      end
+
+      self
+    end
+
     def each_node
       return to_enum(:each_node) unless block_given?
 
@@ -445,6 +551,10 @@ class Roughcut
       end
 
       self
+    end
+
+    def to_a
+      map { |o| o }
     end
 
     def to_s
@@ -471,15 +581,26 @@ end
 if __FILE__ == $0
   require 'minitest/autorun'
 
-  def q(name)
-    Roughcut::Id.intern(name)
-  end
-
-  def s(*args)
-    Roughcut::List.build(*args)
-  end
+  include Roughcut::Helpers
 
   class Roughcut
+    class TestList < MiniTest::Unit::TestCase
+
+      def test_empty_to_a
+        assert_equal [], s().to_a
+      end
+
+      def test_to_a
+        assert_equal [1, 2, 3], s(1, 2, 3).to_a
+      end
+
+      def test_concat
+        assert_equal s(1), s().concat(s(1))
+        assert_equal s(1), s(1).concat(s())
+        assert_equal s(1, 2, 3), s(1, 2).concat(s(3))
+      end
+    end
+
     class TestReader < MiniTest::Unit::TestCase
       def test_nothing
         assert_raises(ReadError) { Reader.new("").read }
@@ -625,6 +746,10 @@ if __FILE__ == $0
 
       def test_unquote_splicing_list
         assert_equal s(q("unquote-splicing"), s(q("foo"))), Reader.new("~@(foo)").read
+      end
+
+      def test_unquote_splicing_no_list
+        assert_raises(SyntaxError) { Reader.new("`~@foo").read }
       end
 
       def test_comment

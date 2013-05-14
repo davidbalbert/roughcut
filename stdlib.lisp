@@ -42,19 +42,19 @@
 ; List manipulation
 
 (defn rest (list)
-      (or (send list :[] 1..-1)
-          ()))
+      (send list :rest))
 
-(defn first (list) (send list :[] 0))
+(defn first (list) (send list :first))
 (defn second (list) (first (rest list)))
 
 (defn cons (val list) `(~val ~@list))
 
+; TODO: don't use flatten
 (defn concat (& lists)
       (apply list (send (send lists :compact) :flatten 1)))
 
 (defn list (& args) args)
-(defn list? (obj) (send obj :is_a? (send Sexp)))
+(defn list? (obj) (send obj :is_a? (send List)))
 (defn empty? (list) (= list ()))
 (defn size (list) (send list :size))
 (defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
