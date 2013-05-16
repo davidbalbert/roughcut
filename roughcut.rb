@@ -262,14 +262,14 @@ class Roughcut
 
         expr = reader.read(false)
 
-        reader.chomp!
-
-        out = eval(expr)
-
-        if out == EOF
+        if expr == EOF
           puts
           break
         end
+
+        reader.chomp
+
+        out = eval(expr)
 
         print "=> "
 

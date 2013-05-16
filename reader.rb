@@ -130,13 +130,8 @@ class Roughcut
       @io.ungetc(ch)
     end
 
-    def chomp!
+    def chomp
       ch = @io.getc
-
-      if ch.nil?
-        puts
-        raise Exit
-      end
 
       @io.ungetc(ch) unless ch == "\n"
     end
