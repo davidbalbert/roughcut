@@ -14,9 +14,13 @@ class Roughcut
   class Function
     include Helpers
 
-    def initialize(args, expressions, &block)
-      @sexp = List.build(q("fn"), args, *expressions)
-      @block = lambda &block
+    def initialize(interpreter, arg_names, expressions, env)
+      @sexp = List.build(q("fn"), arg_names, *expressions)
+      @interpreter = interpreter
+      @arg_names = arg_names
+      @expressions = expressions
+      @env = env
+      @min_args, @max_args = parse_argument_list
     end
 
     def name=(name)
@@ -30,7 +34,12 @@ class Roughcut
     end
 
     def call(*args)
-      @block.call(*args)
+      check_arg_count!(args)
+
+      merged_env = @env.merge(zip_args(@arg_names, args))
+      @expressions.map do |expr|
+        @interpreter.eval(expr, merged_env)
+      end.last
     end
 
     def to_s
@@ -46,12 +55,53 @@ class Roughcut
     def set_sexp_with_name!
       @sexp = List.build(q("defn"), @name, *@sexp.rest)
     end
+
+    # returns [min_args, max_args]
+    def parse_argument_list
+      if @arg_names.include?(q("&"))
+        unless @arg_names.count(q("&")) == 1 && @arg_names.index(q("&")) == @arg_names.size - 2
+          raise SyntaxError, "'&' can only be found in the second to last position of an argument list"
+        end
+
+        [@arg_names.size - 2, -1]
+      else
+        [@arg_names.size, @arg_names.size]
+      end
+    end
+
+    def check_arg_count!(args)
+      if args.size < @min_args
+        raise ArgumentError, "wrong number of arguments (#{args.size} for #{@min_args})"
+      elsif @max_args != -1 && args.size > @max_args
+        raise ArgumentError, "wrong number of arguments (#{args.size} for #{@max_args})"
+      end
+    end
+
+    def zip_args(arg_names, args)
+      if arg_names.include?(q("&"))
+        arg_names = arg_names.to_a
+        required = arg_names.size - 2
+        Hash[arg_names[0...required].zip(args[0...required]) + [[arg_names[-1], List.build(*args[required..-1])]]]
+      else
+        Hash[arg_names.zip(args)]
+      end
+    end
   end
 
   class Macro < Function
-    def initialize(args, body, &block)
-      @sexp = List.build(q("macro"), args, body)
-      @block = lambda &block
+    def initialize(interpreter, arg_names, body, env)
+      @sexp = List.build(q("macro"), arg_names, body)
+      @interpreter = interpreter
+      @arg_names = arg_names
+      @body = body
+      @env = env
+      @min_args, @max_args = parse_argument_list
+    end
+
+    def call(*args)
+      check_arg_count!(args)
+
+      @interpreter.eval(@body, @env.merge(zip_args(@arg_names, args)))
     end
 
     private
@@ -155,26 +205,12 @@ class Roughcut
         if expressions.empty?
           raise SyntaxError, "wrong number of arguments (1 for 2)"
         end
-        min_args, max_args = parse_argument_list(arg_names)
 
-        Function.new(arg_names, expressions) do |*args|
-          check_arg_count(args, min_args, max_args)
-
-          merged_env = env.merge(zip_args(arg_names, args))
-          expressions.map do |expr|
-            eval(expr, merged_env)
-          end.last
-        end
+        Function.new(self, arg_names, expressions, env)
       end,
 
       q("macro") => lambda do |env, arg_names, body|
-        min_args, max_args = parse_argument_list(arg_names)
-
-        Macro.new(arg_names, body) do |*args|
-          check_arg_count(args, min_args, max_args)
-
-          eval(body, env.merge(zip_args(arg_names, args)))
-        end
+        Macro.new(self, arg_names, body, env)
       end,
 
       q("load") => lambda do |filename|
@@ -385,37 +421,6 @@ class Roughcut
       List.build(*spliced)
     else
       o
-    end
-  end
-
-  # returns [min_args, max_args]
-  def parse_argument_list(arg_names)
-    if arg_names.include?(q("&"))
-      unless arg_names.count(q("&")) == 1 && arg_names.index(q("&")) == arg_names.size - 2
-        raise SyntaxError, "'&' can only be found in the second to last position of an argument list"
-      end
-
-      [arg_names.size - 2, -1]
-    else
-      [arg_names.size, arg_names.size]
-    end
-  end
-
-  def check_arg_count(args, min_args, max_args)
-    if args.size < min_args
-      raise ArgumentError, "wrong number of arguments (#{args.size} for #{min_args})"
-    elsif max_args != -1 && args.size > max_args
-      raise ArgumentError, "wrong number of arguments (#{args.size} for #{max_args})"
-    end
-  end
-
-  def zip_args(arg_names, args)
-    if arg_names.include?(q("&"))
-      arg_names = arg_names.to_a
-      required = arg_names.size - 2
-      Hash[arg_names[0...required].zip(args[0...required]) + [[arg_names[-1], List.build(*args[required..-1])]]]
-    else
-      Hash[arg_names.zip(args)]
     end
   end
 
