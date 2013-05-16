@@ -8,6 +8,69 @@ class Roughcut
 
   class EOF; end
 
+  class LineNumberedIO
+    attr_reader :line, :column
+
+    def initialize(io)
+      @io = io
+      @line = 1
+      @column = 1
+      @at_line_start = true
+    end
+
+    def at_line_start?
+      @at_line_start
+    end
+
+    def getc
+      ch = @io.getc
+      @last_at_line_start = @at_line_start
+
+      if ch == "\n" || ch == "\r"
+        @line += 1
+        @column = 1
+        @at_line_start = true
+
+        if ch == "\r"
+          ch2 = @io.getc
+          @io.ungetc(ch2) unless ch2 == "\n"
+
+          ch = ch2
+        end
+      else
+        @column += 1
+        @at_line_start = false
+      end
+
+      ch
+    end
+
+    # NOTE: if you cross a newline boundary in ungetc, column count will be
+    # incorrect.
+    def ungetc(ch)
+      @column -= 1
+      @at_line_start = @last_at_line_start
+
+      if ch == "\n"
+        @line -= 1
+      end
+
+      @io.ungetc(ch)
+    end
+
+    def method_missing(method, *args, &block)
+      if @io.respond_to?(method)
+        @io.send(method, *args, &block)
+      else
+        super
+      end
+    end
+
+    def respond_to_missing?(method, include_all=false)
+      @io.respond_to?(method, include_all)
+    end
+  end
+
   class Reader
     include Helpers
 
@@ -28,10 +91,14 @@ class Roughcut
 
     def initialize(input)
       if input.is_a?(String)
-        @io = StringIO.new(input)
+        @io = LineNumberedIO.new(StringIO.new(input))
       else
-        @io = input
+        @io = LineNumberedIO.new(input)
       end
+    end
+
+    def at_line_start?
+      @io.at_line_start?
     end
 
     def read_all
@@ -44,6 +111,16 @@ class Roughcut
       end
 
       results
+    end
+
+    def skip_whitespace
+      ch = @io.getc
+
+      while is_whitespace?(ch)
+        ch = @io.getc
+      end
+
+      @io.ungetc(ch)
     end
 
     def read(should_raise_on_eof=true)
@@ -629,7 +706,6 @@ if __FILE__ == $0
 
   class Roughcut
     class TestList < MiniTest::Unit::TestCase
-
       def test_empty_to_a
         assert_equal [], s().to_a
       end
@@ -642,6 +718,134 @@ if __FILE__ == $0
         assert_equal s(1), s().concat(s(1))
         assert_equal s(1), s(1).concat(s())
         assert_equal s(1, 2, 3), s(1, 2).concat(s(3))
+      end
+    end
+
+    class TestLineNumberedIO < MiniTest::Unit::TestCase
+      def test_getc_once
+        io = LineNumberedIO.new(StringIO.new("hello"))
+        assert_equal 1, io.column
+        assert_equal 1, io.line
+
+        ch = io.getc
+
+        assert_equal "h", ch
+
+        assert_equal 2, io.column
+        assert_equal 1, io.line
+      end
+
+      def test_ungetc_once
+        io = LineNumberedIO.new(StringIO.new("hello"))
+        ch = io.getc
+
+        io.ungetc(ch)
+
+        assert_equal 1, io.column
+        assert_equal 1, io.line
+
+        ch2 = io.getc
+
+        assert_equal ch, ch2
+        assert_equal 2, io.column
+        assert_equal 1, io.line
+      end
+
+      def test_newline
+        io = LineNumberedIO.new(StringIO.new("\n\n"))
+
+        io.getc
+
+        assert_equal 1, io.column
+        assert_equal 2, io.line
+
+        io.getc
+
+        assert_equal 1, io.column
+        assert_equal 3, io.line
+      end
+
+      def test_carriage_return
+        io = LineNumberedIO.new(StringIO.new("\r"))
+
+        io.getc
+
+        assert_equal 1, io.column
+        assert_equal 2, io.line
+      end
+
+      def test_collapse_crlf
+        io = LineNumberedIO.new(StringIO.new("\r\n"))
+
+        ch = io.getc
+
+        assert_equal "\n", ch
+        assert_equal 1, io.column
+        assert_equal 2, io.line
+
+        ch = io.getc
+        assert_nil ch
+      end
+
+      def test_newline_and_chars
+        io = LineNumberedIO.new(StringIO.new("a\nc"))
+
+        io.getc
+
+        assert_equal 2, io.column
+        assert_equal 1, io.line
+
+        io.getc
+
+        assert_equal 1, io.column
+        assert_equal 2, io.line
+
+        io.getc
+
+        assert_equal 2, io.column
+        assert_equal 2, io.line
+      end
+
+      def test_at_line_start?
+        io = LineNumberedIO.new(StringIO.new("\na\n"))
+
+        assert_equal true, io.at_line_start?
+
+        io.getc
+
+        assert_equal true, io.at_line_start?
+
+        io.getc
+
+        assert_equal false, io.at_line_start?
+
+        io.getc
+
+        assert_equal true, io.at_line_start?
+      end
+
+      def test_at_line_start_after_ungetc
+        io = LineNumberedIO.new(StringIO.new("a"))
+
+        assert_equal true, io.at_line_start?
+
+        ch = io.getc
+
+        assert_equal false, io.at_line_start?
+
+        io.ungetc(ch)
+
+        assert_equal true, io.at_line_start?
+      end
+
+      def test_proxies_other_methods
+        io = LineNumberedIO.new(StringIO.new("hello"))
+
+        assert_equal true, io.respond_to?(:eof?)
+        assert_equal false, io.eof?
+
+        assert_equal false, io.respond_to?(:asdf)
+        assert_raises(NoMethodError) { io.asdf }
       end
     end
 

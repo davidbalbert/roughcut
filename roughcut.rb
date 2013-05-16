@@ -255,11 +255,16 @@ class Roughcut
     reader = Reader.new(STDIN)
 
     loop do
-      print "roughcut> "
+      print "roughcut> " if reader.at_line_start?
 
       begin
         expr = reader.read(false)
         out = eval(expr)
+
+        if out == EOF
+          puts
+          break
+        end
 
         print "=> "
 
