@@ -110,6 +110,8 @@ class Roughcut
 
     private
     def read_list
+      @continue_parsing = false
+
       vals = []
 
       loop do
@@ -150,8 +152,41 @@ class Roughcut
 
         break if ch == ")"
 
+        if "0123456789".include?(ch)
+          @io.ungetc(ch)
+          vals << read_number
+          next
+        end
+
+        if "+-".include?(ch)
+          ch2 = @io.getc
+
+          if "0123456789".include?(ch2)
+            @io.ungetc(ch2)
+            @io.ungetc(ch)
+            vals << read_number
+            next
+          end
+
+          @io.ungetc(ch2)
+        end
+
+
+        if MACROS.has_key?(ch)
+          ret = MACROS[ch].call(self)
+
+          if ret == @io
+            next
+          elsif @continue_parsing == true
+            @continue_parsing = false
+          else
+            vals << ret
+            next
+          end
+        end
+
         @io.ungetc(ch)
-        vals << read
+        vals << parse_token(read_token)
       end
 
       List.build(*vals)
@@ -771,6 +806,10 @@ if __FILE__ == $0
 
       def test_comment_inside_expr
         assert_equal s(q("+"), 1, 2), Reader.new("(+ 1 ; foo bar\n2)").read
+      end
+
+      def test_comment_inside_list_at_end
+        assert_equal s(1, 2), Reader.new("(1 2 ;foo\n)").read
       end
 
       def test_slash_regexp
