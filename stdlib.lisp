@@ -54,9 +54,11 @@
       (apply list (send (send lists :compact) :flatten 1)))
 
 (defn list (& args) args)
-(defn list? (obj) (send obj :is_a? (send List)))
+(defn list? (obj) (or (= (type obj) (send List))
+                      (= (type obj) (send EmptyList))))
+
 (defn empty? (list) (= list ()))
-(defn size (list) (send list :size))
+(defn size (list) (reduce (fn (acc el) (+ acc 1)) 0 list))
 (defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
 
 (defn zip2 (l1 l2)
