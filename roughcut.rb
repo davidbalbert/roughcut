@@ -254,11 +254,16 @@ class Roughcut
 
     reader = Reader.new(STDIN)
 
+    print "roughcut> "
+
     loop do
-      print "roughcut> " if reader.at_line_start?
+      reader.skip_whitespace_until_newline
 
       begin
         expr = reader.read(false)
+
+        reader.chomp!
+
         out = eval(expr)
 
         if out == EOF
@@ -285,6 +290,8 @@ class Roughcut
         puts backtrace
         clear_stack!
       end
+
+      print "roughcut> " if reader.at_line_start?
     end
   end
 

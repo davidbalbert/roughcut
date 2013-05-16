@@ -35,7 +35,7 @@ class Roughcut
           ch2 = @io.getc
           @io.ungetc(ch2) unless ch2 == "\n"
 
-          ch = ch2
+          ch = "\n"
         end
       else
         @column += 1
@@ -113,14 +113,22 @@ class Roughcut
       results
     end
 
-    def skip_whitespace
+    def skip_whitespace_until_newline
       ch = @io.getc
 
-      while is_whitespace?(ch)
+      # Skip all whitespace except LF. CR is impossible because
+      # LineNumberedIO#getc turns CR and CRLF into LF.
+      while !ch.nil? && " \t\f".include?(ch)
         ch = @io.getc
       end
 
       @io.ungetc(ch)
+    end
+
+    def chomp!
+      ch = @io.getc
+
+      @io.ungetc(ch) unless ch == "\n"
     end
 
     def read(should_raise_on_eof=true)
@@ -768,8 +776,9 @@ if __FILE__ == $0
       def test_carriage_return
         io = LineNumberedIO.new(StringIO.new("\r"))
 
-        io.getc
+        ch = io.getc
 
+        assert_equal "\n", ch
         assert_equal 1, io.column
         assert_equal 2, io.line
       end
