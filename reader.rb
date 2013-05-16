@@ -113,7 +113,7 @@ class Roughcut
       results
     end
 
-    def skip_whitespace_until_newline
+    def skip_whitespace_until_newline!
       ch = @io.getc
 
       # Skip all whitespace except LF. CR is impossible because
@@ -122,11 +122,21 @@ class Roughcut
         ch = @io.getc
       end
 
+      if ch.nil?
+        puts
+        raise Exit
+      end
+
       @io.ungetc(ch)
     end
 
     def chomp!
       ch = @io.getc
+
+      if ch.nil?
+        puts
+        raise Exit
+      end
 
       @io.ungetc(ch) unless ch == "\n"
     end

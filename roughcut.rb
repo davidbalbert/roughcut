@@ -257,9 +257,9 @@ class Roughcut
     print "roughcut> "
 
     loop do
-      reader.skip_whitespace_until_newline
-
       begin
+        reader.skip_whitespace_until_newline!
+
         expr = reader.read(false)
 
         reader.chomp!
