@@ -294,26 +294,26 @@ class Roughcut
 
     loop do
       begin
-        reader.skip_whitespace_until_newline!
+        saw_newline = reader.skip_whitespace_through_newline!
 
-        expr = reader.read(false)
+        unless saw_newline
+          expr = reader.read(false)
 
-        if expr == EOF
-          puts
-          break
-        end
+          if expr == EOF
+            puts
+            break
+          end
 
-        reader.chomp
+          out = eval(expr)
 
-        out = eval(expr)
+          print "=> "
 
-        print "=> "
-
-        case out
-        when List, EmptyList, Id
-          puts out
-        else
-          p out
+          case out
+          when List, EmptyList, Id
+            puts out
+          else
+            p out
+          end
         end
       rescue Exit
         break
