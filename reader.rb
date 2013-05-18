@@ -127,6 +127,20 @@ class Roughcut
         raise Exit
       end
 
+      # comments are whitespace
+      if ch == ";"
+        while !ch.nil? && ch != "\n"
+          ch = @io.getc
+        end
+
+        if ch.nil?
+          puts
+          raise Exit
+        end
+
+        return true
+      end
+
       if ch == "\n"
         true
       else
