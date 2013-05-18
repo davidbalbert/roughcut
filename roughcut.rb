@@ -1,9 +1,7 @@
-require 'readline'
 require 'pp'
 
 require './reader'
 require './helpers'
-require './readlineio'
 
 class Roughcut
   HISTORY_FILE = File.expand_path("~/.roughcut_history")
@@ -232,57 +230,9 @@ class Roughcut
     @env[q("load")].call("stdlib.lisp")
   end
 
-  def simple_repl
+  def repl(io)
     @env[q("env")] = @env
 
-    reader = Reader.new(STDIN)
-
-    print "roughcut> "
-
-    loop do
-      begin
-        saw_newline = reader.skip_whitespace_through_newline!
-
-        unless saw_newline
-          expr = reader.read(false)
-
-          if expr == EOF
-            puts
-            break
-          end
-
-          out = eval(expr)
-          @env[q("_")] = out
-
-          print "=> "
-
-          case out
-          when List, EmptyList, Id
-            puts out
-          else
-            pp out
-          end
-        end
-      rescue Exit
-        break
-      rescue StandardError => e
-        STDERR.puts("#{e.class}: #{e.message}")
-        puts backtrace
-        clear_stack!
-      rescue SyntaxError => e
-        STDERR.puts("#{e.class}: #{e.message}")
-        puts backtrace
-        clear_stack!
-      end
-
-      print "roughcut> " if reader.at_line_start?
-    end
-  end
-
-  def readline_repl
-    @env[q("env")] = @env
-
-    io = ReadlineIO.new("roughcut> ", "", Roughcut::HISTORY_FILE)
     reader = Reader.new(io)
 
     loop do
@@ -324,7 +274,9 @@ class Roughcut
       io.reset_prompt! if reader.at_line_start?
     end
   ensure
-    io.clear_and_save_history!
+    if io.respond_to? :clear_and_save_history!
+      io.clear_and_save_history!
+    end
   end
 
   def eval(o, env=@env)
@@ -441,5 +393,11 @@ class Roughcut
 end
 
 if __FILE__ == $0
-  Roughcut.new.readline_repl
+  if ARGV.include?("--simple")
+    require './promptingio'
+    Roughcut.new.repl(Roughcut::PromptingIO.new("roughcut> "))
+  else
+    require './readlineio'
+    Roughcut.new.repl(Roughcut::ReadlineIO.new("roughcut> ", "", Roughcut::HISTORY_FILE))
+  end
 end
