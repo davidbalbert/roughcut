@@ -157,7 +157,7 @@ class Roughcut
     @env = Env.new({
       q("p") => lambda do |*args|
         out = args.map do |a|
-          if a.is_a?(Id)
+          if a.is_a?(Id) || list?(a)
             a.to_s
           else
             a.inspect
@@ -165,7 +165,7 @@ class Roughcut
         end
         puts out
 
-        nil
+        List.build(*args)
       end,
 
       q("puts") => lambda do |*args|
