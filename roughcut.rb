@@ -286,7 +286,7 @@ class Roughcut
   end
 
   def simple_repl
-    @env[:env] = @env
+    @env[q("env")] = @env
 
     reader = Reader.new(STDIN)
 
@@ -312,7 +312,7 @@ class Roughcut
           when List, EmptyList, Id
             puts out
           else
-            p out
+            pp out
           end
         end
       rescue Exit
