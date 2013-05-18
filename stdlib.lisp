@@ -3,24 +3,24 @@
 ; We'll start with defmacro
 
 (def defmacro (macro (name args body)
-                     `(def ~name (macro ~args ~body))))
+                     `(def ,name (macro ,args ,body))))
 
 ; And now we'll use that to make defn!
 
 (defmacro defn (name args & expressions)
-  `(def ~name (fn ~args ~@expressions)))
+  `(def ,name (fn ,args ,@expressions)))
 
 (defmacro let (bindings & expressions)
-  `((fn ~(filter-by-index even? bindings)
-        ~@expressions) ~@(filter-by-index odd? bindings)))
+  `((fn ,(filter-by-index even? bindings)
+        ,@expressions) ,@(filter-by-index odd? bindings)))
 
 (defmacro let* (bindings & expressions)
   (if (>= 2 (size bindings))
-    `(let ~bindings ~@expressions)
+    `(let ,bindings ,@expressions)
 
-    `((fn (~(first bindings))
-          (let* ~(rest (rest bindings)) ~@expressions))
-      ~(second bindings))))
+    `((fn (,(first bindings))
+          (let* ,(rest (rest bindings)) ,@expressions))
+      ,(second bindings))))
 
 (defmacro letrec (bindings & expressions)
   (let* (names (filter-by-index even? bindings)
@@ -31,11 +31,11 @@
            (zip2 names values)
          set!s
            (map (fn (pair) (cons 'set! pair)) binding-pairs))
-    `(let ~nil-bindings ~@set!s ~@expressions)))
+    `(let ,nil-bindings ,@set!s ,@expressions)))
 
 
 (defmacro do (& expressions)
-  `(let () ~@expressions))
+  `(let () ,@expressions))
 
 (defn identity (x) x)
 
@@ -47,7 +47,7 @@
 (defn first (list) (send list :first))
 (defn second (list) (first (rest list)))
 
-(defn cons (val list) `(~val ~@list))
+(defn cons (val list) `(,val ,@list))
 
 (defn concat (& lists)
       (let (concat2
@@ -126,27 +126,27 @@
 
 (defmacro or (condition & args)
   (if (empty? args)
-    `(if ~condition ~condition false)
-    `(if ~condition ~condition (or ~@args))))
+    `(if ,condition ,condition false)
+    `(if ,condition ,condition (or ,@args))))
 
 (defmacro and (condition & args)
   (if (empty? args)
-    `(if ~condition ~condition false)
-    `(if ~condition (and ~@args) false)))
+    `(if ,condition ,condition false)
+    `(if ,condition (and ,@args) false)))
 
 ; Control flow
 
 (defmacro unless (condition & branches)
-  `(if (not ~condition) ~@branches))
+  `(if (not ,condition) ,@branches))
 
 (defmacro cond (& clauses)
   (if (= 0 (size clauses))
     nil
     (if (= (first clauses) :else)
       (second clauses)
-      `(if ~(first clauses)
-         ~(second clauses)
-         (cond ~@(rest (rest clauses)))))))
+      `(if ,(first clauses)
+         ,(second clauses)
+         (cond ,@(rest (rest clauses)))))))
 
 (defn exit () (send self :raise (send Exit)))
 

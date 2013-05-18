@@ -80,7 +80,7 @@ class Roughcut
       ":" => lambda { |reader| reader.send(:read_symbol) },
       "'" => lambda { |reader| reader.send(:read_quote) },
       "`" => lambda { |reader| reader.send(:read_quasiquote) },
-      "~" => lambda { |reader| reader.send(:read_unquote) },
+      "," => lambda { |reader| reader.send(:read_unquote) },
       ";" => lambda { |reader| reader.send(:read_comment) },
       "/" => lambda { |reader| reader.send(:read_regexp) },
       "%" => lambda { |reader| reader.send(:read_percent_regexp) }
@@ -345,7 +345,7 @@ class Roughcut
     def read_quasiquote
       l = List.build(Id.intern("quasiquote"), read)
 
-      if list?(l.rest.first) && l.rest.first.first == Id.intern("unquote-splicing")
+      if list?(l.second) && l.second.first == Id.intern("unquote-splicing")
         raise SyntaxError, "You cannot use unquote-splicing outside of a list"
       end
 
@@ -543,6 +543,10 @@ class Roughcut
       nil
     end
 
+    def second
+      nil
+    end
+
     def rest
       self
     end
@@ -593,6 +597,10 @@ class Roughcut
     include Helpers
 
     attr_accessor :first, :rest
+
+    def second
+      rest.first
+    end
 
     def self.build(*args)
       if args.empty?
@@ -655,20 +663,30 @@ class Roughcut
     end
 
     def to_s
-      elements = each_node.map do |n|
-        if !n.respond_to?(:first)
-          # dotted pairs
-          ". #{n}"
-        elsif n.first.nil?
-          "nil"
-        elsif list?(n.first) || n.first.is_a?(Id)
-          n.first.to_s
-        else
-          n.first.inspect
-        end
-      end.join(" ")
+      if first == q("quote")
+        "'#{second}"
+      elsif first == q("quasiquote")
+        "`#{second}"
+      elsif first == q("unquote")
+        ",#{second}"
+      elsif first == q("unquote-splicing")
+        ",@#{second}"
+      else
+        elements = each_node.map do |n|
+          if !n.respond_to?(:first)
+            # dotted pairs
+            ". #{n}"
+          elsif n.first.nil?
+            "nil"
+          elsif list?(n.first) || n.first.is_a?(Id)
+            n.first.to_s
+          else
+            n.first.inspect
+          end
+        end.join(" ")
 
-      "(#{elements})"
+        "(#{elements})"
+      end
     end
 
     def inspect
@@ -954,23 +972,23 @@ if __FILE__ == $0
       end
 
       def test_unquote_sym
-        assert_equal s(q("unquote"), q("foo")), Reader.new("~foo").read
+        assert_equal s(q("unquote"), q("foo")), Reader.new(",foo").read
       end
 
       def test_unquote_list
-        assert_equal s(q("unquote"), s(q("foo"))), Reader.new("~(foo)").read
+        assert_equal s(q("unquote"), s(q("foo"))), Reader.new(",(foo)").read
       end
 
       def test_unquote_splicing_sym
-        assert_equal s(q("unquote-splicing"), q("foo")), Reader.new("~@foo").read
+        assert_equal s(q("unquote-splicing"), q("foo")), Reader.new(",@foo").read
       end
 
       def test_unquote_splicing_list
-        assert_equal s(q("unquote-splicing"), s(q("foo"))), Reader.new("~@(foo)").read
+        assert_equal s(q("unquote-splicing"), s(q("foo"))), Reader.new(",@(foo)").read
       end
 
       def test_unquote_splicing_no_list
-        assert_raises(SyntaxError) { Reader.new("`~@foo").read }
+        assert_raises(SyntaxError) { Reader.new("`,@foo").read }
       end
 
       def test_comment
