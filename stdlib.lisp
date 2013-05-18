@@ -67,7 +67,16 @@
 
 (defn empty? (list) (= list ()))
 (defn size (list) (reduce (fn (acc el) (+ acc 1)) 0 list))
-(defn take (num list) (send list :[] (send Range :new 0 (- num 1))))
+(defn take (num list)
+      (letrec (take-helper
+             (fn (num list new-list)
+                 (if (zero? num)
+                   new-list
+                   (take-helper
+                     (- num 1)
+                     (rest list)
+                     (cons (first list) new-list)))))
+        (reverse (take-helper num list ()))))
 
 (defn zip2 (l1 l2)
       (if (or (empty? l1) (empty? l2))
@@ -109,6 +118,7 @@
 
 (defn even? (n) (= 0 (mod n 2)))
 (defn odd? (n) (= 1 (mod n 2)))
+(defn zero? (n) (= 0 n))
 
 ; Boolean logic
 
