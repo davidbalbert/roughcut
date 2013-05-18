@@ -185,7 +185,7 @@ class Roughcut
 
       q("quote") => lambda { |env, list| list },
       q("quasiquote") => lambda { |env, list| process_unquotes(list, env) },
-      q("apply") => lambda { |f, *args, arg_list| f.call(*(args + arg_list)) },
+      q("apply") => lambda { |f, *args, arg_list| f.call(*(args.to_a + arg_list.to_a)) },
 
       q("def") => lambda do |env, name, val|
         val = eval(val, env)
