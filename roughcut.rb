@@ -3,6 +3,7 @@ require 'pp'
 
 require './reader'
 require './helpers'
+require './readlineio'
 
 class Roughcut
   HISTORY_FILE = File.expand_path("~/.roughcut_history")
@@ -231,60 +232,6 @@ class Roughcut
     @env[q("load")].call("stdlib.lisp")
   end
 
-  def repl
-    @old_history = Readline::HISTORY.to_a
-    clear_history!
-
-    if File.exists?(HISTORY_FILE)
-      history = File.read(HISTORY_FILE).split("\n")
-      load_history(history)
-    end
-
-    @env[:env] = @env
-
-    loop do
-      input = Readline.readline("roughcut> ")
-      break if input.nil? || input == " "
-      next if input.gsub(/;.*?$/, "").strip.empty?
-
-      begin
-        if Readline::HISTORY.size == 0 || Readline::HISTORY[-1] != input
-          Readline::HISTORY << input
-        end
-
-        out = eval(parse(input))
-        @env[:_] = out
-
-        print "=> "
-        if out.is_a?(Sexp)
-          p out
-        elsif out.is_a?(Id)
-          puts out
-        else
-          pp out
-        end
-      rescue Exit
-        break
-      rescue StandardError => e
-        STDERR.puts("#{e.class}: #{e.message}")
-        puts backtrace
-        clear_stack!
-        #STDERR.puts(e.backtrace)
-      rescue SyntaxError => e
-        STDERR.puts("#{e.class}: #{e.message}")
-        puts backtrace
-        clear_stack!
-      end
-    end
-  ensure
-    File.open(HISTORY_FILE, "w") do |f|
-      f.write(Readline::HISTORY.to_a.join("\n") + "\n")
-    end
-
-    clear_history!
-    load_history(@old_history)
-  end
-
   def simple_repl
     @env[q("env")] = @env
 
@@ -330,6 +277,54 @@ class Roughcut
 
       print "roughcut> " if reader.at_line_start?
     end
+  end
+
+  def readline_repl
+    @env[q("env")] = @env
+
+    io = ReadlineIO.new("roughcut> ", "", Roughcut::HISTORY_FILE)
+    reader = Reader.new(io)
+
+    loop do
+      begin
+        saw_newline = reader.skip_whitespace_through_newline!
+
+        unless saw_newline
+          expr = reader.read(false)
+
+          if expr == EOF
+            puts
+            break
+          end
+
+          out = eval(expr)
+          @env[q("_")] = out
+
+          print "=> "
+
+          case out
+          when List, EmptyList, Id
+            puts out
+          else
+            pp out
+          end
+        end
+      rescue Exit
+        break
+      rescue StandardError => e
+        STDERR.puts("#{e.class}: #{e.message}")
+        puts backtrace
+        clear_stack!
+      rescue SyntaxError => e
+        STDERR.puts("#{e.class}: #{e.message}")
+        puts backtrace
+        clear_stack!
+      end
+
+      io.reset_prompt! if reader.at_line_start?
+    end
+  ensure
+    io.clear_and_save_history!
   end
 
   def eval(o, env=@env)
@@ -436,16 +431,6 @@ class Roughcut
     end
   end
 
-  def clear_history!
-    Readline::HISTORY.shift until Readline::HISTORY.empty?
-  end
-
-  def load_history(history)
-    history.each do |line|
-      Readline::HISTORY << line
-    end
-  end
-
   def backtrace
     @stack.map { |func| "\tin '#{func}'" }.join("\n")
   end
@@ -456,5 +441,5 @@ class Roughcut
 end
 
 if __FILE__ == $0
-  Roughcut.new.simple_repl
+  Roughcut.new.readline_repl
 end
