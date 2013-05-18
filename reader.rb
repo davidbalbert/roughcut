@@ -588,10 +588,6 @@ class Roughcut
       nil
     end
 
-    def concat(other)
-      other
-    end
-
     def each
       return to_enum unless block_given?
 
@@ -653,11 +649,6 @@ class Roughcut
     end
 
     alias index find_index
-
-    def concat(other)
-      # TODO: this could be more efficient we iterate across both lists, but all we really need to do is iterate across the first one
-      List.build(*self, *other)
-    end
 
     def each
       return to_enum unless block_given?
@@ -724,12 +715,6 @@ if __FILE__ == $0
 
       def test_to_a
         assert_equal [1, 2, 3], s(1, 2, 3).to_a
-      end
-
-      def test_concat
-        assert_equal s(1), s().concat(s(1))
-        assert_equal s(1), s(1).concat(s())
-        assert_equal s(1, 2, 3), s(1, 2).concat(s(3))
       end
     end
 

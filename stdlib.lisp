@@ -49,9 +49,17 @@
 
 (defn cons (val list) `(~val ~@list))
 
-; TODO: don't use flatten
 (defn concat (& lists)
-      (apply list (send (send lists :compact) :flatten 1)))
+      (let (concat2
+            (fn (a b)
+                (reduce (fn (acc el) (cons el acc))
+                        b
+                        (reverse a)))
+            reversed-lists
+            (reverse lists))
+        (reduce (fn (a b) (concat2 b a))
+                (first reversed-lists)
+                (rest reversed-lists))))
 
 (defn list (& args) args)
 (defn list? (obj) (or (= (type obj) (send List))
