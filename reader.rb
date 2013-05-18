@@ -526,37 +526,12 @@ class Roughcut
       @str = str
     end
 
-    def ==(other)
-      if other.is_a?(Id)
-        @str == other.str
-      else
-        false
-      end
-    end
-
-    def eql?(other)
-      if other.is_a?(Id)
-        @str.eql?(other.str)
-      else
-        false
-      end
-    end
-
-    def hash
-      @str.hash
-    end
-
     def to_s
       @str
     end
 
     def inspect
       "#<Roughcut::Id: #{to_s}>"
-    end
-
-    protected
-    def str
-      @str
     end
   end
 
