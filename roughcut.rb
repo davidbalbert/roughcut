@@ -198,7 +198,7 @@ class Roughcut
       end,
 
       q("set!") => lambda do |env, name, val|
-        env.set!(name.to_sym, eval(val, env))
+        env.set!(name, eval(val, env))
       end,
 
       q("fn") => lambda do |env, arg_names, *expressions|
