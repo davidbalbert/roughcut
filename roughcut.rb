@@ -305,6 +305,7 @@ class Roughcut
           end
 
           out = eval(expr)
+          @env[q("_")] = out
 
           print "=> "
 
