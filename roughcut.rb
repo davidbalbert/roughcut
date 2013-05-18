@@ -250,7 +250,7 @@ class Roughcut
           out = eval(expr)
           @env[q("_")] = out
 
-          print "=> "
+          print "=> " unless ARGV.include?("--no-prompt")
 
           case out
           when List, EmptyList, Id
@@ -271,7 +271,9 @@ class Roughcut
         clear_stack!
       end
 
-      io.reset_prompt! if reader.at_line_start?
+      if reader.at_line_start? && io.respond_to?(:reset_prompt!)
+        io.reset_prompt!
+      end
     end
   ensure
     if io.respond_to? :clear_and_save_history!
@@ -393,7 +395,9 @@ class Roughcut
 end
 
 if __FILE__ == $0
-  if ARGV.include?("--simple")
+  if ARGV.include?("--no-prompt")
+    Roughcut.new.repl(STDIN)
+  elsif ARGV.include?("--simple")
     require './promptingio'
     Roughcut.new.repl(Roughcut::PromptingIO.new("roughcut> "))
   else
