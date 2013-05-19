@@ -289,49 +289,47 @@ class Roughcut
       else
         raise NameError, "#{o} is undefined"
       end
-    elsif list?(o)
-      if o.empty?
-        o # () should return the empty list
-      else
-        func_name = o.first
-        func = eval(func_name, env)
+    elsif !list?(o)
+      o
+    elsif o.empty?
+      o # () should return the empty list
+    else
+      func_name = o.first
+      func = eval(func_name, env)
 
-        @stack.unshift(func_name)
+      @stack.unshift(func_name)
 
-        result = case func_name
-        when q("quote"), q("quasiquote"), q("def"), q("set!"), q("fn"), q("macro")
-          func.call(env, *o.rest)
-        when q("if")
-          func.call(env,
-                    eval(o.rest.first, env),
-                    o.rest.rest.first,
-                    o.rest.rest.rest.first)
-        when q("send")
-          # send is a special form that evals it's second argument as ruby code
-          receiver = o.second
-          if receiver.is_a?(Id) && env.has_key?(receiver)
-            receiver = env[receiver]
-          elsif receiver.is_a?(Id)
-            receiver = super(receiver.to_s)
-          elsif list?(receiver)
-            receiver = eval(receiver, env)
-          end
-
-          func.call(receiver, *o.rest.rest.map { |obj| eval(obj, env) })
-        else
-          if func.is_a?(Macro)
-            eval(func.call(*o.rest), env)
-          else
-            func.call(*o.rest.map { |obj| eval(obj, env) })
-          end
+      result = case func_name
+      when q("quote"), q("quasiquote"), q("def"), q("set!"), q("fn"), q("macro")
+        func.call(env, *o.rest)
+      when q("if")
+        func.call(env,
+                  eval(o.rest.first, env),
+                  o.rest.rest.first,
+                  o.rest.rest.rest.first)
+      when q("send")
+        # send is a special form that evals it's second argument as ruby code
+        receiver = o.second
+        if receiver.is_a?(Id) && env.has_key?(receiver)
+          receiver = env[receiver]
+        elsif receiver.is_a?(Id)
+          receiver = super(receiver.to_s)
+        elsif list?(receiver)
+          receiver = eval(receiver, env)
         end
 
-        @stack.shift
-
-        result
+        func.call(receiver, *o.rest.rest.map { |obj| eval(obj, env) })
+      else
+        if func.is_a?(Macro)
+          eval(func.call(*o.rest), env)
+        else
+          func.call(*o.rest.map { |obj| eval(obj, env) })
+        end
       end
-    else
-      o
+
+      @stack.shift
+
+      result
     end
   end
 
