@@ -307,7 +307,7 @@ class Roughcut
                     o.rest.rest.rest.first)
         when q("send")
           # send is a special form that evals it's second argument as ruby code
-          receiver = o.rest.first
+          receiver = o.second
           if receiver.is_a?(Id) && env.has_key?(receiver)
             receiver = env[receiver]
           elsif receiver.is_a?(Id)
@@ -340,10 +340,12 @@ class Roughcut
     if list?(o)
       if o.first == q("unquote")
         fail "unquote expects only one operand" unless o.size == 2
-        eval(o.rest.first, env)
+        eval(o.second, env)
       elsif o.first == q("unquote-splicing")
         fail "unquote-splicing expects only one operand" unless o.size == 2
-        List.build(o.first, *eval(o.rest.first, env))
+        list = eval(o.second, env)
+        fail "unquote-splicing must be used with a list" unless list?(list)
+        List.build(o.first, *list)
       else
         o = List.build(*o.map { |el| process_unquotes(el, env) })
 

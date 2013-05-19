@@ -47,7 +47,7 @@
 (defn first (list) (send list :first))
 (defn second (list) (first (rest list)))
 
-(defn cons (val list) `(,val ,@list))
+(defn cons (val list) (send List :new val list))
 
 (defn concat (& lists)
       (let (concat2
