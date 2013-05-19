@@ -2,6 +2,7 @@ require 'pp'
 
 require './reader'
 require './helpers'
+require './readlineio'
 
 class Roughcut
   HISTORY_FILE = File.expand_path("~/.roughcut_history")
@@ -230,7 +231,7 @@ class Roughcut
     @env[q("load")].call("stdlib.lisp")
   end
 
-  def repl(io)
+  def repl(io = Roughcut::ReadlineIO.new("roughcut> ", "", Roughcut::HISTORY_FILE))
     @env[q("env")] = @env
 
     reader = Reader.new(io)
@@ -403,7 +404,6 @@ if __FILE__ == $0
     require './promptingio'
     Roughcut.new.repl(Roughcut::PromptingIO.new("roughcut> "))
   else
-    require './readlineio'
-    Roughcut.new.repl(Roughcut::ReadlineIO.new("roughcut> ", "", Roughcut::HISTORY_FILE))
+    Roughcut.new.repl
   end
 end

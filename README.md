@@ -305,7 +305,7 @@ Rupert
 => nil
 ```
 
-Function arguments are local variables. A local scope is introduced by calling a function. When the function is called, a new scope is created and the function's arguments are bound to values. Local variables will shadow both global variables and function arguments in outer scopes:
+Local variables are just function arguments. A local scope is introduced by calling a function. When the function is called, a new scope is created and the function's arguments are bound to values. Local variables will shadow both global variables and function arguments in outer scopes:
 
 ```lisp
 roughcut> ((fn ()
@@ -359,7 +359,7 @@ roughcut> (macroexpand-all '(letrec (odd?
 
 ### Mutating varialbes
 
-Function application only lets you shadow variables in outer scopes. Once the function finishes, these variables will be back to their old value. Roughcut has two ways of perminantly changing the value of a variable.
+Function application only lets you shadow variables in outer scopes. Once the function finishes, these variables will be back to their old values. Roughcut has two ways of perminantly changing the value of a variable.
 
 If your variable is global, you can use the `def` special form to redefine it:
 
@@ -405,27 +405,31 @@ roughcut> planet
 
 ## Read-eval-print loop
 
-Roughcut has a nice little REPL. It uses Readline to provide line editing, navigation, command history, and history lookup. It saves history between invocations in `,/.roughcut_history`. Roughcut preserves whatever history existed before its REPL started and restores it after it ends. This means that Roughcut plays nice from within IRB or Pry:
+Roughcut has a nice little REPL. It uses Readline to provide line editing, navigation, command history, and history lookup. It saves history between invocations in `~/.roughcut_history`. Roughcut preserves whatever history existed before its REPL started and restores it after it ends. This means that Roughcut plays nice from within IRB or Pry:
 
 ```
 $ pry
 [1] pry(main)> load 'roughcut.rb'
+=> true
+[2] pry(main)> Roughcut.new.repl
 roughcut> (+ 1 2)
 => 3
 roughcut> ; use the up arrow to get to the last line we eval'd
 roughcut> (+ 1 2)
 => 3
 roughcut> (exit)
+=> nil
+[3] pry(main)> # use the up arrow to get to the last line we ran in our Ruby REPL
+[3] pry(main)> load 'roughcut.rb'
 => true
-[2] pry(main)> # use the up arrow to get to the last line we ran in our Ruby REPL
-[2] pry(main)> load 'roughcut.rb'
+[4] pry(main)> Roughcut.new.repl
 roughcut.rb:5: warning: already initialized constant HISTORY_FILE
 roughcut> ; use the up arrow twice to get (+ 1 2) again.
 roughcut> (+ 1 2)
 => 3
 ```
 
-The Roughcut REPL has two special variables, `_` and `env`.
+The Roughcut REPL has two special global variables, `_` and `env`.
 
 For convenience, the value of the last line to be evaluated is stored in `_`:
 
@@ -480,7 +484,7 @@ roughcut> (+ 1 2 3)
 roughcut> ; up arrow does nothing
 ```
 
-Additionally, the `--no-prompt` flag disables the Roughcut prompt:
+Additionally, the `--no-prompt` flag disables the Roughcut prompt entirely:
 
 ```
 $ ruby roughcut.rb --no-prompt
@@ -489,7 +493,7 @@ $ ruby roughcut.rb --no-prompt
 ; you could enter more expressions here
 ```
 
-I'm not sure why I added the `--no-prompt` flag, but I have a hunch it may be useful.
+I'm not sure why I added `--no-prompt`, but I have a hunch it might be useful at some point.
 
 ## Ruby
 
@@ -540,7 +544,7 @@ roughcut> (send [1,2,3,4,5] :inject :+)
 
 ## Internals
 
-For better or worse, Roughcut's interpreter is mostly of my own devising. Roughcut's reader, on the other hand, shares a fair amount of DNA with Clojure's reader. I'm not sure how I feel about this. Once upon a time, Roughcut had a lexer and parser of my own devising. The [lexer] [1] was a particularly gross birdsnest of regular expressions that I had trouble reading mere days after I wrote it. Certainly the new reader is better than the old lexer/parser combination, however part of me wishes it didn't turn out so similar to the Clojure reader.
+For better or worse, Roughcut's interpreter is mostly of my own devising. Roughcut's reader, on the other hand, shares a fair amount of DNA with Clojure's reader. I'm not sure how I feel about this. Once upon a time, Roughcut had a lexer and parser that I came up with on my own. The [lexer] [1] was a gross birdsnest of regular expressions that I had trouble reading mere days after I wrote it. Certainly the new reader is better than the old lexer/parser combination, however part of me wishes it didn't turn out so similar to the Clojure reader.
 
 [1]: https://github.com/davidbalbert/roughcut/blob/9e4b7014ca63eb78a9c8491a6ec07eea503a4c40/roughcut.rb#L316-L368
 
@@ -556,6 +560,7 @@ Roughcut is full of flaws. Here are some I'd like to correct in no particular or
 - No multi-arity functions.
 - No argument destructuring.
 - The source could be cleaner, shorter, and less gross.
+- Runtime macros are slow.
 
 ## Requirements
 
@@ -567,7 +572,7 @@ If you like Roughcut, you might like [Hacker School](https://www.hackerschool.co
 
 ## Thanks
 
-My thanks to [Zach](https://github.com/zachallaun) and [Allison](https://github.com/akaptur) for challenging me to implement `map`, `filter`, and `reduce` in a language of my choosing, eventually sending me down this rabbit hole, [Alan](https://github.com/happy4crazy) for feedback on my macro system, and Zach again for his help with `letrec` and `set!`.
+My thanks to [Zach](https://github.com/zachallaun) and [Allison](https://github.com/akaptur) for challenging me to implement `map`, `filter`, and `reduce` in a language of my choosing, eventually sending me down this rabbit hole, [Alan](https://github.com/happy4crazy) for feedback on my macro system,, [David](https://github.com/swannodette) for encouraging me to explore the Clojure reader, and Zach again for his help with `letrec` and `set!`.
 
 ## License
 
