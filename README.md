@@ -4,7 +4,7 @@ Roughcut is a little Lisp with lots of imperfections, written in Ruby.
 
 ## Motivation
 
-I like strange loops, languages that are mostly written in themselves, and building things out of smaller things. Roughcut is an experiment that lets me play with these ideas. I also wanted to get a better understanding of macros, so Roughcut has those too.
+I'd never written a proper language before, so I decided to try. This is my first attempt. I also wanted to get a better understanding of macros, so Roughcut has those too.
 
 ## Design goals
 
@@ -16,7 +16,7 @@ Roughcut has three major design goals:
 
 ## Overview
 
-Roughcut works like Common Lisp, is implemented like Scheme, and looks like Clojure. From Common Lisp it takes the macro system. From Scheme it takes a very small set of fundamental forms and a single namespace for functions and variables. From Clojure, Roughcut takes names (`def`, `defn`, `defmacro`, `first`, `second`, `rest`), syntax (`unquote` and `unquote-splicing` are written with tildes instead of commas: `~`, `~@`) and ideas about interacting with an underlying language runtime.
+Roughcut works like Common Lisp, is implemented like Scheme, and looks a bit like Clojure. From Common Lisp it takes the macro system. From Scheme it takes a very small set of fundamental forms and a single namespace for functions and variables. From Clojure, Roughcut takes names (`def`, `defn`, `defmacro`, `first`, `second`, `rest`) and ideas about interacting with an underlying language runtime.
 
 ### Examples
 
@@ -52,6 +52,35 @@ roughcut> (def number 42)
 => 42
 roughcut> number
 => 42
+```
+
+linked lists:
+
+```lisp
+roughcut> (cons 1 (cons 2 (cons 3 ())))
+=> (1 2 3)
+roughcut> (list 4 5 6)
+=> (4 5 6)
+```
+
+quoted lists:
+
+```lisp
+roughcut> (first '(4 5 6))
+=> 4
+roughcut> (rest '(4 5 6))
+=> (5 6)
+```
+
+dotted pairs:
+
+```lisp
+roughcut> (cons 1 2)
+=> (1 . 2)
+roughcut> (first '(1 . 2))
+=> 1
+roughcut> (rest '(1 . 2))
+=> 2
 ```
 
 functions:
@@ -129,15 +158,15 @@ roughcut> even?
 anonymous macros (this is an implementation of `when`):
 
 ```lisp
-roughcut> (macro (condition & exprs) `(if ~condition (do ~@exprs)))
-=> (macro (condition & exprs) `(if ~condition (do ~@exprs)))
+roughcut> (macro (condition & exprs) `(if ,condition (do ,@exprs)))
+=> (macro (condition & exprs) `(if ,condition (do ,@exprs)))
 ```
 
 and named macros:
 
 ```lisp
 roughcut> defn
-=> (defmacro defn (name args & expressions) `(def ~name (fn ~args ~@expressions)))
+=> (defmacro defn (name args & expressions) `(def ,name (fn ,args ,@expressions)))
 ```
 
 The ability to see the implementation of any function or macro helps blur the line between user and implementer. The system is not perfect though. Functions defined in Ruby are not yet transparent. This is something I hope to change in the future:
@@ -167,26 +196,26 @@ roughcut> '(double 5)
 => (double 5)
 ```
 
-If you need to interpolate into a list, you can use `quasiquote` (backtick) with `unquote` (tilde) instead:
+If you need to interpolate values into a quoted list, you can use `quasiquote` (backtick) with `unquote` (comma) instead:
 
 ```lisp
 roughcut> (def lucky-number 1337)
 => 1337
-roughcut> `(double ~lucky-number)
+roughcut> `(double ,lucky-number)
 => (double 1337)
 ```
 
 If you want to evaluate the contents of your list, treating `double` as a function once more, you can use the `eval` function:
 
 ```lisp
-roughcut> (eval `(double ~lucky-number))
+roughcut> (eval `(double ,lucky-number))
 => 2674
 ```
 
 You can also splice arguments into a list using `unquote-splicing`. This is similar to the `*` operator in Ruby or Python:
 
 ```lisp
-roughcut> `(1 2 ~@(list 3 4))
+roughcut> `(1 2 ,@(list 3 4))
 => (1 2 3 4)
 ```
 
@@ -211,7 +240,7 @@ roughcut> (f 1 2 3)
 => nil
 roughcut> (f)
 ArgumentError: wrong number of arguments (0 for 1)
-  in 'f'
+        in 'f'
 ```
 
 Roughcut does not support argument destructuring or multi-arity functions, but I would very much like it to.
@@ -224,7 +253,7 @@ Consider the `unless` macro, which is the opposite of `if`:
 
 ```lisp
 roughcut> unless
-=> (defmacro unless (condition & branches) `(if (not ~condition) ~@branches))
+=> (defmacro unless (condition & branches) `(if (not ,condition) ,@branches))
 ```
 
 You can use it like this:
@@ -248,7 +277,7 @@ Some macros are recursively defined. For instance `or` is defined in terms of it
 
 ```lisp
 roughcut> or
-=> (defmacro or (condition & args) (if (empty? args) `(if ~condition ~condition false) `(if ~condition ~condition (or ~@args))))
+=> (defmacro or (condition & args) (if (empty? args) `(if ,condition ,condition false) `(if ,condition ,condition (or ,@args))))
 roughcut> (macroexpand '(or foo bar baz))
 => (if foo foo (or bar baz))
 ```
@@ -260,11 +289,11 @@ roughcut> (macroexpand-all '(or foo bar baz))
 => (if foo foo (if bar bar (if baz baz false)))
 ```
 
-Roughcut macros are evaluated at runtime, not compile time. I think it would be better for performance if they were evaluated at compile time, but runtime macros were easier to write.
+Roughcut macros are evaluated at runtime, not compile time. It would be better for performance if they were evaluated at compile time, but runtime macros were easier to write. This is the next feature I'd like to work on.
 
 ## Read-eval-print loop
 
-Roughcut has a nice little REPL, if I do say so myself. It uses Readline to provide line editing, navigation, command history, and history lookup. It saves history between invocations in `~/.roughcut_history`. Roughcut preserves whatever history existed before its REPL started and restores it after it ends. This means that Roughcut plays nice from within IRB or Pry:
+Roughcut has a nice little REPL. It uses Readline to provide line editing, navigation, command history, and history lookup. It saves history between invocations in `,/.roughcut_history`. Roughcut preserves whatever history existed before its REPL started and restores it after it ends. This means that Roughcut plays nice from within IRB or Pry:
 
 ```
 $ pry
@@ -284,8 +313,6 @@ roughcut> (+ 1 2)
 => 3
 ```
 
-A single space character will also exit the REPL and won't get added to the command history, making it very easy to test changes to the interpreter. Reloading the interpreter is as simple as typing "`<space><CR><up-arrow><CR>`".
-
 The Roughcut REPL has two special variables, `_` and `env`.
 
 For convenience, the value of the last line to be evaluated is stored in `_`:
@@ -299,33 +326,58 @@ roughcut> (_ 50)
 => -50
 ```
 
-`env` is a special variable that stores the entire current environment. It's useful for debugging the Roughcut interpreter. `env` is a Ruby hash and stores all variables and functions:
+`env` is a special variable that stores the entire current environment. It's useful for debugging the Roughcut interpreter. `env` contains an array of Ruby hashes, one per scope, and stores all variables and functions:
 
 ```
 roughcut> (def phone-number "212-555-1212")
 => "212-555-1212"
 roughcut> env
-=> {:p=>#<Proc:0x007ffbabc84a48@roughcut.rb:133 (lambda)>,
- :puts=>#<Proc:0x007ffbabc84a20@roughcut.rb:146 (lambda)>,
- :send=>#<Proc:0x007ffbabc8c9c8@roughcut.rb:153 (lambda)>,
- :quasiquote=>#<Proc:0x007ffbabc8c9a0@roughcut.rb:161 (lambda)>,
- :"macroexpand-1"=>#<Proc:0x007ffbabc8c978@roughcut.rb:162 (lambda)>,
- :apply=>#<Proc:0x007ffbabc8c950@roughcut.rb:163 (lambda)>,
- :def=>#<Proc:0x007ffbabc8c928@roughcut.rb:165 (lambda)>,
- :fn=>#<Proc:0x007ffbabc8c900@roughcut.rb:175 (lambda)>,
- :macro=>#<Proc:0x007ffbabc8c8d8@roughcut.rb:190 (lambda)>,
- :load=>#<Proc:0x007ffbabc8c8b0@roughcut.rb:200 (lambda)>,
- :if=>#<Proc:0x007ffbabc8c888@roughcut.rb:205 (lambda)>,
- :VERSION=>"0.0.0",
- :defmacro=>
-  (defmacro defmacro (name args body) `(def ~name (macro ~args ~body))),
- :defn=>
-  (defmacro defn (name args & expressions) `(def ~name (fn ~args ~@expressions))),
- ...snip...
- :env=>{...},
- :_=>{...},
- :"phone-number"=>"212-555-1212"}
+=> #<Roughcut::Env:0x007fe333098be8
+ @envs=
+  [{#<Roughcut::Id: p>=>#<Proc:0x007fe333099598@roughcut.rb:157 (lambda)>,
+    #<Roughcut::Id: puts>=>#<Proc:0x007fe3330994a8@roughcut.rb:170 (lambda)>,
+    #<Roughcut::Id: send>=>#<Proc:0x007fe333099408@roughcut.rb:177 (lambda)>,
+    #<Roughcut::Id: quote>=>#<Proc:0x007fe3330992c8@roughcut.rb:185 (lambda)>,
+    #<Roughcut::Id: quasiquote>=>
+     #<Proc:0x007fe3330991d8@roughcut.rb:186 (lambda)>,
+    #<Roughcut::Id: apply>=>#<Proc:0x007fe333099138@roughcut.rb:187 (lambda)>,
+    #<Roughcut::Id: def>=>#<Proc:0x007fe333099098@roughcut.rb:189 (lambda)>,
+    #<Roughcut::Id: set!>=>#<Proc:0x007fe333098fa8@roughcut.rb:199 (lambda)>,
+    #<Roughcut::Id: fn>=>#<Proc:0x007fe333098ee0@roughcut.rb:203 (lambda)>,
+    #<Roughcut::Id: macro>=>#<Proc:0x007fe333098df0@roughcut.rb:211 (lambda)>,
+    #<Roughcut::Id: load>=>#<Proc:0x007fe333098d28@roughcut.rb:215 (lambda)>,
+    #<Roughcut::Id: if>=>#<Proc:0x007fe333098c88@roughcut.rb:221 (lambda)>,
+    #<Roughcut::Id: VERSION>=>"0.0.0",
+    #<Roughcut::Id: defmacro>=>
+     (defmacro defmacro (name args body) `(def ,name (macro ,args ,body))),
+    #<Roughcut::Id: defn>=>
+    ...snip...
+    #<Roughcut::Id: env>=>#<Roughcut::Env:0x007fe333098be8 ...>,
+    #<Roughcut::Id: _>=>#<Roughcut::Env:0x007fe333098be8 ...>,
+    #<Roughcut::Id: phone-number>=>"212-555-1212"}]>
 ```
+
+### REPL Options
+
+The default Roughcut REPL uses Readline for line editing and history. The `--simple` flag will bypass Readline and read directly from `STDIN`:
+
+```
+$ ruby roughcut.rb --simple
+roughcut> (+ 1 2 3)
+=> 6
+roughcut> ; up arrow does nothing
+```
+
+Additionally, the `--no-prompt` flag disables the Roughcut prompt:
+
+```
+$ ruby roughcut.rb --no-prompt
+(+ 1 2 3)
+6
+; you could enter more expressions here
+```
+
+I'm not sure why I added the `--no-prompt` flag, but I have a hunch it may be useful.
 
 ## Ruby
 
@@ -342,15 +394,13 @@ roughcut> (type "Hello")
 => String
 roughcut> (type :name)
 => Symbol
-roughcut> (type 1..100)
-=> Range
 roughcut> (type /foo/i)
 => Regexp
 ```
 
 ### Regular expression caveats
 
-While Roughcut does support Ruby regular expression literals, it has a small caveat. Because `/` is a valid function name, Roughcut cannot support standard regular expression literals with leading whitespace. To illustrate the problem, consider how would you interpret `(match / foo / " foo ")`. At first glance it looks like match is taking two arguments: the regexp `/ foo /` and the string `" foo "`, but in reality, match is taking four arguments: `/`, `foo`, `/`, and `" foo "`. To get around this problem, Roughcut also supports Ruby's alternative regexp literal syntax: `%r{}`. You can use this to write a regexp with leading whitespace:
+While Roughcut does support Ruby regular expression literals, there is a small caveat. Because `/` is a valid function name, Roughcut cannot support standard regular expression literals with leading whitespace. To illustrate the problem, consider how would you interpret `(match / foo / " foo ")`. At first glance it looks like match is taking two arguments: the regexp `/ foo /` and the string `" foo "`, but in reality, match is taking four arguments: `/`, `foo`, `/`, and `" foo "`. To get around this problem, Roughcut also supports Ruby's alternative regexp literal syntax: `%r{}`. You can use this to write a regexp with leading whitespace:
 
 ```lisp
 roughcut> %r{ foo }
@@ -383,12 +433,10 @@ Roughcut is full of flaws. Here are some I'd like to correct in no particular or
 - No block literals.
 - No source information in backtraces.
 - No ruby method information in backtraces.
-- Sexps are arrays. They should be linked lists.
 - Functions defined in Ruby do not evaluate to their source.
 - Some functions defined in Ruby (`def`, `fn`, `macro`, `if`) report an incorrect arity when called with the wrong number of arguments.
 - No multi-arity functions.
 - No argument destructuring.
-- The parser should be more friendly and wait for missing left parens instead of raising an error.
 - The source could be cleaner, shorter, and less gross.
 
 ## Requirements
@@ -401,8 +449,8 @@ If you like Roughcut, you might like [Hacker School](https://www.hackerschool.co
 
 ## Thanks
 
-My thanks to [Zach](https://github.com/zachallaun) and [Allison](https://github.com/akaptur) for challenging me to implement `map`, `filter`, and `reduce` in a language of my choosing, eventually sending me down this rabbit hole, and [Alan](https://github.com/happy4crazy) for feedback on my macro system.
+My thanks to [Zach](https://github.com/zachallaun) and [Allison](https://github.com/akaptur) for challenging me to implement `map`, `filter`, and `reduce` in a language of my choosing, eventually sending me down this rabbit hole, [Alan](https://github.com/happy4crazy) for feedback on my macro system, and Zach again for his help with `letrec` and `set!`.
 
 ## License
 
-Roughcut is copyright 2012 David Albert and is licensed under the terms of the GNU GPLv3. See COPYING for more details.
+Roughcut is copyright 2013 David Albert and is licensed under the terms of the GNU GPLv3. See COPYING for more details.
