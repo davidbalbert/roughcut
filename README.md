@@ -572,7 +572,7 @@ If you like Roughcut, you might like [Hacker School](https://www.hackerschool.co
 
 ## Thanks
 
-My thanks to [Zach](https://github.com/zachallaun) and [Allison](https://github.com/akaptur) for challenging me to implement `map`, `filter`, and `reduce` in a language of my choosing, eventually sending me down this rabbit hole, [Alan](https://github.com/happy4crazy) for feedback on my macro system,, [David](https://github.com/swannodette) for encouraging me to explore the Clojure reader, and Zach again for his help with `letrec` and `set!`.
+My thanks to [Zach](https://github.com/zachallaun) and [Allison](https://github.com/akaptur) for challenging me to implement `map`, `filter`, and `reduce` in a language of my choosing, eventually sending me down this rabbit hole, [Alan](https://github.com/happy4crazy) for feedback on my macro system, [David](https://github.com/swannodette) for encouraging me to explore the Clojure reader, and Zach again for his help with `letrec` and `set!`.
 
 ## License
 
