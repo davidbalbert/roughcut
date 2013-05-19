@@ -291,6 +291,118 @@ roughcut> (macroexpand-all '(or foo bar baz))
 
 Roughcut macros are evaluated at runtime, not compile time. It would be better for performance if they were evaluated at compile time, but runtime macros were easier to write. This is the next feature I'd like to work on.
 
+## Variables and scope
+
+Roughcut has both global and local variables. Global variables are defined using the `def` special form and are avaiable anywhere in your program:
+
+```lisp
+roughcut> (def name "Rupert")
+=> "Rupert"
+roughcut> name
+=> "Rupert"
+roughcut> ((fn () (puts name)))
+Rupert
+=> nil
+```
+
+Function arguments are local variables. A local scope is introduced by calling a function. When the function is called, a new scope is created and the function's arguments are bound to values. Local variables will shadow both global variables and function arguments in outer scopes:
+
+```lisp
+roughcut> ((fn ()
+               (puts name)
+               ((fn (name)
+                    (puts name)
+                    ((fn (name)
+                         (puts name)) "Alice"))
+                "Bob")))
+Rupert
+Bob
+Alice
+=> nil
+```
+
+You can also use the `let` family of macros (`let`, `let*`, and `letrec`) to introduce new scopes and local bindings, but these are really just functions in disguise.
+
+```lisp
+roughcut> (let (a 1 b 2) (+ a b))
+=> 3
+roughcut> (macroexpand '(let (a 1 b 2) (+ a b)))
+=> ((fn (a b) (+ a b)) 1 2)
+```
+
+```lisp
+roughcut> (let* (a 1 b (+ a 1)) (list a b))
+=> (1 2)
+roughcut> (macroexpand-all '(let* (a 1 b (+ a 1)) (list a b)))
+=> ((fn (a) ((fn (b) (list a b)) (+ a 1))) 1)
+```
+
+```lisp
+roughcut> (letrec (odd?
+                   (fn (n) (if (zero? n) false (even? (- n 1))))
+                   even?
+                   (fn (n) (if (zero? n) true (odd? (- n 1)))))
+            (odd? 10))
+=> false
+roughcut> (macroexpand-all '(letrec (odd?
+                                     (fn (n) (if (zero? n) false (even? (- n 1))))
+                                     even?
+                                     (fn (n) (if (zero? n) true (odd? (- n 1)))))
+                              (odd? 10)))
+; formatted for readability
+=> ((fn (odd? even?)
+        (set! odd? (fn (n) (if (zero? n) false (even? (- n 1)))))
+        (set! even? (fn (n) (if (zero? n) true (odd? (- n 1)))))
+        (odd? 10))
+    nil nil)
+```
+
+### Mutating varialbes
+
+Function application only lets you shadow variables in outer scopes. Once the function finishes, these variables will be back to their old value. Roughcut has two ways of perminantly changing the value of a variable.
+
+If your variable is global, you can use the `def` special form to redefine it:
+
+```lisp
+roughcut> (def planet "Mars")
+=> "Mars"
+roughcut> planet
+=> "Mars"
+roughcut> (def planet "Jupiter")
+=> "Jupiter"
+roughcut> planet
+=> "Jupiter"
+```
+
+If you have a local variable, you can use `set!` to redefine it:
+
+```lisp
+roughcut> (let (name "Holly")
+               (puts name)
+               (set! name "Molly")
+               (puts name))
+Holly
+Molly
+=> nil
+```
+
+`set!` only works on variables that already exist. It searches for the variable named in its first argument, starting at the innermost scope and working its way out. If it can't find an existing binding, it throws an exception:
+
+```lisp
+roughcut> (set! not-here 100)
+NameError: Undefined variable 'not-here'
+        in 'set!'
+```
+
+You can, of course, use `set!` on globals:
+
+```lisp
+roughcut> (set! planet "Pluto")
+=> "Pluto"
+roughcut> planet
+=> "Pluto"
+```
+
 ## Read-eval-print loop
 
 Roughcut has a nice little REPL. It uses Readline to provide line editing, navigation, command history, and history lookup. It saves history between invocations in `,/.roughcut_history`. Roughcut preserves whatever history existed before its REPL started and restores it after it ends. This means that Roughcut plays nice from within IRB or Pry:
@@ -409,7 +521,7 @@ roughcut> %r{ foo }
 
 ## Special forms
 
-Roughcut has a number of special forms that don't follow the normal rules of evaluation. These are `def`, `fn`, `macro`, `if`, `quote`, `quasiquote`, `unquote`, `unquote-splicing`, and `send`. Unlike most other Lisps, many of these are implemented as functions and some are even implemented in Roughcut itself. Only `unquote` and `unquote-splicing` are not not defined as functions. This means you can redefine core pieces of the language at will. Remember: with great power comes great responsibility. Use this feature wisely.
+Roughcut has a number of special forms that don't follow the normal rules of evaluation. These are `def`, `set!`, `fn`, `macro`, `if`, `quote`, `quasiquote`, `unquote`, `unquote-splicing`, and `send`. Unlike most other Lisps, many of these are implemented as functions and some are even implemented in Roughcut itself. Only `unquote` and `unquote-splicing` are not not defined as functions. This means you can redefine core pieces of the language at will. Remember: with great power comes great responsibility. Use this feature wisely.
 
 ### `send`
 
@@ -425,6 +537,12 @@ roughcut> (send [1,2,3,4,5] :inject :+)
 ```
 
 `send` allows Roughcut to be implemented almost entirely in itself rather than in Ruby. For instance, all of Roughcut's math, logic, string and list manipulation functions are implemented in Roughcut.
+
+## Internals
+
+For better or worse, Roughcut's interpreter is mostly of my own devising. Roughcut's reader, on the other hand, shares a fair amount of DNA with Clojure's reader. I'm not sure how I feel about this. Once upon a time, Roughcut had a lexer and parser of my own devising. The [lexer] [1] was a particularly gross birdsnest of regular expressions that I had trouble reading mere days after I wrote it. Certainly the new reader is better than the old lexer/parser combination, however part of me wishes it didn't turn out so similar to the Clojure reader.
+
+[1]: https://github.com/davidbalbert/roughcut/blob/9e4b7014ca63eb78a9c8491a6ec07eea503a4c40/roughcut.rb#L316-L368
 
 ## Imperfections
 
