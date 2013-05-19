@@ -54,7 +54,7 @@ roughcut> number
 => 42
 ```
 
-linked lists:
+lists:
 
 ```lisp
 roughcut> (cons 1 (cons 2 (cons 3 ())))
@@ -63,7 +63,7 @@ roughcut> (list 4 5 6)
 => (4 5 6)
 ```
 
-quoted lists:
+quoting:
 
 ```lisp
 roughcut> (first '(4 5 6))
