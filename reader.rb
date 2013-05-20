@@ -593,10 +593,6 @@ class Roughcut
       self
     end
 
-    def to_a
-      []
-    end
-
     def to_s
       "()"
     end
@@ -670,10 +666,6 @@ class Roughcut
       end
 
       self
-    end
-
-    def to_a
-      map { |o| o }
     end
 
     def to_s
