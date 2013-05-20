@@ -5,7 +5,7 @@ class Roughcut
     end
 
     def s(*args)
-      Roughcut::List.build(*args)
+      List.build(*args)
     end
 
     def list?(o)
