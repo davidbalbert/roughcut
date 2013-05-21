@@ -376,9 +376,11 @@ class Roughcut
   end
 
   def macroexpand_1(o)
-    if (list?(o) &&
-        @env.has_key?(o.first) &&
-        (macro = eval(o.first)).is_a?(Macro))
+    if list?(o) && o.first.is_a?(Macro)
+      o.first.call(*o.rest)
+    elsif (list?(o) &&
+      @env.has_key?(o.first) &&
+      (macro = eval(o.first)).is_a?(Macro))
 
       macro.call(*o.rest)
     else
