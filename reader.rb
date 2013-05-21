@@ -86,7 +86,7 @@ class Roughcut
       "%" => lambda { |reader| reader.send(:read_percent_regexp) }
     }
 
-    FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(\.[0-9]+)([eE][+-]?[0-9]+)?\z/
+    FLOAT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)(([eE][+-]?[0-9]+)|(\.[0-9]+)([eE][+-]?[0-9]+)?)\z/
     INT_REGEXP = /\A[+-]?([0-9]|[1-9][0-9]*)\z/
 
     def initialize(input)
@@ -912,6 +912,10 @@ if __FILE__ == $0
 
       def test_exponent_with_pos_and_neg
         assert_equal -1.23e+5, Reader.new("-1.23e+5").read
+      end
+
+      def test_exponent_with_no_dot
+        assert_equal -1e100, Reader.new("-1e100").read
       end
 
       def test_sym_with_plus_and_minus
