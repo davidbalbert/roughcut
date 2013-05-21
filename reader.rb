@@ -206,6 +206,8 @@ class Roughcut
           end
         end
 
+        raise ReadError, "Found unexpected ')'" if ch == ")"
+
         @io.ungetc(ch)
         return parse_token(read_token)
       end
@@ -241,7 +243,14 @@ class Roughcut
             end
 
             raise ReadError, "Reader reached EOF, expecting ')'" if ch2.nil?
-            raise ReadError, "More than one object follows '.' in list" unless ch2 == ")"
+
+            unless ch2 == ")"
+              until ch2 == ")" || ch2.nil?
+                ch2 = @io.getc
+              end
+
+              raise ReadError, "More than one object follows '.' in list"
+            end
 
             return vals.reverse.reduce(tail) do |rest, v|
               List.new(v, rest)
@@ -1065,6 +1074,13 @@ if __FILE__ == $0
         assert_raises(ReadError) { Reader.new("(1 2 . 3 4").read }
       end
 
+      def test_bad_dotted_pair_three_trailing_vals
+        reader = Reader.new("(1 2 . 3 4 5)")
+
+        assert_raises(ReadError) { reader.read }
+        assert_equal EOF, reader.read(false)
+      end
+
       def test_unfinished_dotted_pair
         assert_raises(ReadError) { Reader.new("(1 .").read }
         assert_raises(ReadError) { Reader.new("(1 . ").read }
@@ -1081,6 +1097,14 @@ if __FILE__ == $0
 
       def test_dot_alone
         assert_raises(ReadError) { Reader.new(" . ").read }
+      end
+
+      def test_extra_close_paren
+        reader = Reader.new("())")
+
+        assert_equal s(), reader.read(false) # => ()
+        assert_raises(ReadError) { reader.read(false) } # extra close paren
+        assert_equal EOF, reader.read(false)
       end
     end
   end
