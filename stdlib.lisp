@@ -204,12 +204,12 @@
       (send self :macroexpand_1 form))
 
 (defn macroexpand (form)
-      (macroexpand-helper (macroexpand-1 form) form))
-
-(defn macroexpand-helper (new old)
-      (if (= new old)
-        new
-        (macroexpand-helper (macroexpand-1 new) new)))
+      (letrec (helper
+            (fn (new old)
+              (if (= new old)
+                new
+                (helper (macroexpand-1 new) new))))
+      (helper (macroexpand-1 form) form)))
 
 (defn macroexpand-all (form)
       (if (list? (macroexpand form))
