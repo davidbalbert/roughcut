@@ -321,7 +321,11 @@ class Roughcut
         func.call(receiver, *o.rest.rest.map { |obj| eval(obj, env) })
       else
         if func.is_a?(Macro)
-          eval(func.call(*o.rest), env)
+          expanded = func.call(*o.rest)
+          o.first = expanded.first
+          o.rest = expanded.rest
+
+          eval(o, env)
         else
           func.call(*o.rest.map { |obj| eval(obj, env) })
         end
