@@ -289,7 +289,7 @@ roughcut> (macroexpand-all '(or foo bar baz))
 => (if foo foo (if bar bar (if baz baz false)))
 ```
 
-Roughcut macros are evaluated at runtime, not compile time. It would be better for performance if they were evaluated at compile time, but runtime macros were easier to write. This is the next feature I'd like to work on.
+Roughcut macros are evaluated at runtime, not compile time. This can be slow, so the results of macroexpansion are cached in the AST.
 
 ## Variables and scope
 
