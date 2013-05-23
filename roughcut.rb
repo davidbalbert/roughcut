@@ -15,7 +15,7 @@ class Roughcut
     include Helpers
 
     def initialize(interpreter, arg_names, expressions, env)
-      @sexp = List.build(q("fn"), arg_names, *expressions)
+      @repr = List.build(q("fn"), arg_names, *expressions)
       @interpreter = interpreter
       @arg_names = arg_names
       @expressions = expressions
@@ -27,7 +27,7 @@ class Roughcut
       # once named, functions cannot be renamed
       unless @name
         @name = name
-        set_sexp_with_name!
+        set_repr_with_name!
       end
 
       name
@@ -43,7 +43,7 @@ class Roughcut
     end
 
     def to_s
-      @sexp.to_s
+      @repr.to_s
     end
 
     def inspect
@@ -52,8 +52,8 @@ class Roughcut
 
     private
 
-    def set_sexp_with_name!
-      @sexp = List.build(q("defn"), @name, *@sexp.rest)
+    def set_repr_with_name!
+      @repr = List.build(q("defn"), @name, *@repr.rest)
     end
 
     # returns [min_args, max_args]
@@ -90,7 +90,7 @@ class Roughcut
 
   class Macro < Function
     def initialize(interpreter, arg_names, body, env)
-      @sexp = List.build(q("macro"), arg_names, body)
+      @repr = List.build(q("macro"), arg_names, body)
       @interpreter = interpreter
       @arg_names = arg_names
       @body = body
@@ -106,8 +106,8 @@ class Roughcut
 
     private
 
-    def set_sexp_with_name!
-      @sexp = List.build(q("defmacro"), @name, *@sexp.rest)
+    def set_repr_with_name!
+      @repr = List.build(q("defmacro"), @name, *@repr.rest)
     end
   end
 
